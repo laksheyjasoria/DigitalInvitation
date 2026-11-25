@@ -58,9 +58,9 @@ public class PaymentController {
         if(!settings.getBoolean("invitation.expiry.extension-enabled"))
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Invitation extensions are not available");
         UUID user=UUID.fromString(auth.getName());
-        var invitation=jdbc.query("SELECT i.status,p.id publication_id FROM invitation i JOIN LATERAL (SELECT id FROM invitation_publication WHERE invitation_id=i.id ORDER BY published_at DESC LIMIT 1) p ON true WHERE i.id=? AND i.owner_user_id=?",
-            (rs,n)->Map.of("status",rs.getString("status"),"publicationId",rs.getObject("publication_id",UUID.class)),id,user);
-        if(invitation.isEmpty()||!java.util.Set.of("PUBLISHED","EXPIRED").contains(invitation.get(0).get("status")))
+        var invitation=jdbc.query("SELECT i.status,p.id publication_id,p.revoked_at FROM invitation i JOIN LATERAL (SELECT id,revoked_at FROM invitation_publication WHERE invitation_id=i.id ORDER BY published_at DESC LIMIT 1) p ON true WHERE i.id=? AND i.owner_user_id=?",
+            (rs,n)->Map.of("status",rs.getString("status"),"publicationId",rs.getObject("publication_id",UUID.class),"revoked",rs.getTimestamp("revoked_at")!=null),id,user);
+        if(invitation.isEmpty()||Boolean.TRUE.equals(invitation.get(0).get("revoked"))||!java.util.Set.of("PUBLISHED","EXPIRED").contains(invitation.get(0).get("status")))
             throw new IllegalArgumentException("Only published or expired invitations can be extended");
         int days=settings.getInt("invitation.expiry.extension-days");long baseAmount=settings.getLong("invitation.expiry.extension-price-minor");
         BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
