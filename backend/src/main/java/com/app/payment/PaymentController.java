@@ -20,6 +20,7 @@ public class PaymentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
+        if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
         var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",id,user);
         long amount=settings.getLong("pricing.base-price-minor");
         String currency=settings.getString("pricing.currency");
@@ -27,7 +28,7 @@ public class PaymentController {
         long expiryVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
         String lastFunctionDate=invitation.get("last_function_date")==null?"":invitation.get("last_function_date").toString();
         String timezone=String.valueOf(invitation.get("timezone"));
-        Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone);
+        Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone,"paymentRequired",true);
         String pricingSnapshot;
         try{pricingSnapshot=mapper.writeValueAsString(Map.of("amountMinor",amount,"currency",currency,"expiryPolicy",expiryPolicy));}
         catch(Exception e){throw new IllegalStateException("Unable to snapshot order terms");}
