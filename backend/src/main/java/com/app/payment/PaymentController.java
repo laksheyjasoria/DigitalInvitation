@@ -63,6 +63,7 @@ public class PaymentController {
             r.providerPaymentId(),orderId,provider.name(),r.providerOrderId(),UUID.fromString(auth.getName()));
         if(changed==0)throw new IllegalArgumentException("Payment transaction not found or already processed");
         jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=? AND user_id=?",orderId,UUID.fromString(auth.getName()));
+        jdbc.update("UPDATE invitation SET status='READY_TO_PUBLISH',updated_at=now() WHERE id=(SELECT invitation_id FROM customer_order WHERE id=?) AND status='PENDING_PAYMENT'",orderId);
         return ApiResponse.success(Map.of("orderId",orderId,"status","PAID"));
     }
     @org.springframework.transaction.annotation.Transactional\n    @PostMapping("/webhooks/razorpay")
@@ -80,7 +81,10 @@ public class PaymentController {
                 if(paymentId.isBlank()||gatewayOrderId.isBlank())throw new IllegalArgumentException("Captured payment event is incomplete");
                 int updated=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND amount_minor=? AND currency=? AND status IN ('INITIATED','AUTHORIZED')",
                     paymentId,gatewayOrderId,payment.path("amount").asLong(),payment.path("currency").asText());
-                if(updated==1)jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?)",gatewayOrderId);
+                if(updated==1){
+                    jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?)",gatewayOrderId);
+                    jdbc.update("UPDATE invitation SET status='READY_TO_PUBLISH',updated_at=now() WHERE id=(SELECT invitation_id FROM customer_order WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?)) AND status='PENDING_PAYMENT'",gatewayOrderId);
+                }
             }else if(eventType.equals("payment.failed")){
                 jdbc.update("UPDATE payment_transaction SET status='FAILED',updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND status='INITIATED'",gatewayOrderId);
                 jdbc.update("UPDATE customer_order SET status='FAILED',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?) AND status<>'PAID'",gatewayOrderId);
