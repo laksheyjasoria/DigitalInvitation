@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
+/** Reads runtime business rules from versioned database settings. */
 public class SystemSettingService {
  private final JdbcTemplate jdbc;private final ObjectMapper mapper;
  public SystemSettingService(JdbcTemplate jdbc,ObjectMapper mapper){this.jdbc=jdbc;this.mapper=mapper;}
