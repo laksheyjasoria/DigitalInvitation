@@ -1,62 +1,60 @@
 # DigitalInvitation
 
-A configurable, privacy-first digital invitation platform for weddings, birthdays, anniversaries, and other events.
+A configurable digital invitation platform for weddings, birthdays, anniversaries, family celebrations and other occasions. Customers can choose a design, customize optional sections, preview the invitation, review policies, pay, publish a unique link and QR code, and manage its validity.
 
-## Current implementation status
+## Current implementation branch
 
-This repository now contains the initial project foundation: Java 21 / Spring Boot backend, PostgreSQL schema migration, locked-down security defaults, health API, responsive landing page, Docker Compose topology, and a backend CI workflow.
+The current implementation is on the draft pull request:
 
-**This is an early foundation build, not a complete or production-ready SaaS yet.** Customer authentication, invitation editing, template management, payment gateway, FileServer storage adapter, consent capture, publication, expiry worker, admin dashboard, and operational hardening remain to be implemented and tested. The API intentionally denies all non-public routes until their authentication and authorization are implemented.
+https://github.com/laksheyjasoria/DigitalInvitation/pull/1
 
-## Technology
+This branch contains the Java/Spring Boot foundation, PostgreSQL migrations, authentication and account email workflows, catalogue/template APIs, owner-scoped invitation drafts, consent/policy versioning, Razorpay integration, storage provider boundary, image media APIs, publication snapshots, QR generation, expiry processing, customer editor, admin settings dashboard, Docker and CI configuration.
+
+**This is not yet a production-ready release.** The PR is still draft. The build and end-to-end flows must be verified. The deployed FileServer upload/delete contract is not confirmed, SMTP and payment credentials need configuration, and several product capabilities and security/operations gates remain. See docs/operations/PRODUCTION_READINESS.md.
+
+## Stack
 
 - Java 21, Spring Boot 3.5.x, Maven
-- PostgreSQL 16 and Flyway migrations
-- Spring Security with deny-by-default API policy
+- PostgreSQL 16, Flyway
+- Spring Security, BCrypt, JWT
+- Razorpay provider adapter (disabled until configured)
+- FileServer storage provider boundary (disabled until contract is verified)
 - Responsive static frontend served by Nginx
-- Docker Compose for local development
-- GitHub Actions backend verification
+- Docker Compose and GitHub Actions
 
-## Run locally with Docker
+## Local setup
 
-1. Install Docker Engine/Desktop and Docker Compose.
-2. Copy `.env.example` to `.env`.
-3. Set a strong local PostgreSQL password in `.env`.
-4. Run:
+1. Copy .env.example to .env.
+2. Set POSTGRES_PASSWORD and APP_JWT_SECRET. APP_JWT_SECRET must be a random value of at least 32 bytes.
+3. Set APP_PUBLIC_BASE_URL=http://localhost:8088.
+4. Set APP_BOOTSTRAP_ADMIN_EMAIL and APP_BOOTSTRAP_ADMIN_PASSWORD (at least 16 characters) if you need an initial SUPER_ADMIN. The bootstrap account is inserted only if that email does not already exist.
+5. Configure SMTP before expecting email verification and password-reset links to be delivered. Set APP_MAIL_ENABLED=true and SMTP values.
+6. Keep Razorpay and FileServer disabled until their credentials/contracts are configured.
+7. Run docker compose up --build -d.
+8. Open http://localhost:8088. Customer workspace: /app.html. Admin dashboard: /admin.html.
 
-       docker compose up --build -d
+Health endpoint: http://localhost:8088/actuator/health
 
-5. Open the frontend at `http://localhost:8088`.
-6. Check backend health at `http://localhost:8088/actuator/health` and API status at `http://localhost:8088/api/v1/public/status`.
-
-The PostgreSQL service is not published to the host in the default Compose topology. Do not expose it publicly.
+PostgreSQL is private to the Compose network and is not published to the host by default. Do not expose it publicly.
 
 ## Product principles
 
-1. **Configuration first:** Business durations, limits, prices, feature availability, categories, and section behavior are validated settings, not hardcoded rules.
-2. **Privacy by default:** Drafts and account data are private. Only an explicit, reviewed publication snapshot is public.
-3. **Provider independence:** Storage and payment integrations are behind replaceable interfaces. The existing FileServer is the initial storage integration target.
-4. **Inclusive templates:** Optional, reorderable sections, custom event labels, and multiple languages. No religious ceremony or tradition is mandatory.
-5. **Auditable lifecycle:** Payment, consent, publication, expiry, extension, administrative access, and deletion actions are recorded.
-6. **Secure by design:** Server-side authorization, ownership checks, verified payments, idempotent webhooks, safe output encoding, and least privilege are mandatory.
+1. Configuration first: pricing, expiry duration, timezone, media quotas and feature flags are runtime settings with audited changes.
+2. Private by default: drafts, account data, payment metadata and media are owner-scoped. Only explicitly published snapshots and public media are accessible by link.
+3. Inclusive templates: optional sections can be hidden, renamed, reordered and extended. Templates are versioned and do not require any specific religious tradition.
+4. Provider boundaries: payment and storage integrations are replaceable adapters.
+5. Paid publication: payment requirement is configurable; when enabled, backend-verified captured payment is required. Publication also requires the current declarations and explicit publish action.
+6. Lifecycle: expiry is computed from the last function date plus the effective configured grace period and timezone. The policy is snapshotted with publication. The QR encodes a stable URL; after expiry, the URL shows an expired state.
 
-## Invitation lifecycle
+## Documentation
 
-The initial business default discussed is seven calendar days after the **last scheduled function date**. This is a configurable default, never a hardcoded constant. Each paid invitation must retain the effective policy/version and calculated expiry agreed at purchase. Changes to defaults apply to new invitations unless an explicit, audited migration is approved. Expiry must be checked on every public request; scheduled processing is supplementary.
+- docs/product/REQUIREMENTS.md
+- docs/architecture/PRODUCT_ARCHITECTURE.md
+- docs/security/THREAT_MODEL.md
+- docs/api/API_REFERENCE.md
+- docs/operations/CONFIGURATION.md
+- docs/operations/PRODUCTION_READINESS.md
 
-## Planned customer journey
+## Before launch
 
-Browse categories and templates → customize sections and content → preview on mobile/desktop → review details and consent → pay through configured provider → server verifies payment → customer explicitly publishes → receive unique URL and QR code → access ends according to the stored expiry policy.
-
-## Architecture and security decisions
-
-See:
-- `docs/architecture/PRODUCT_ARCHITECTURE.md`
-- `docs/product/REQUIREMENTS.md`
-- `docs/security/THREAT_MODEL.md`
-
-## Production-readiness gates
-
-Before public launch, implement and verify authentication and account recovery; owner-scoped APIs and IDOR tests; template editor and preview; storage and upload safety; payment signature/webhook replay protection; versioned consent and policy capture; immutable publication snapshots; request-time expiry enforcement and recovery-safe jobs; admin controls and audit; monitoring, backups and restore drills; load/security testing; TLS, secret management, deployment and incident runbooks; and legal review.
-
-A feature is not production-ready until its tests and operational checks pass.
+Complete the production readiness checklist, verify FileServer integration against the deployed server, run PostgreSQL and browser end-to-end tests, configure live payment/email providers, perform security and load testing, test backup restoration, and obtain legal review of Terms and Privacy Policy. Do not use the seeded policy drafts as legal advice.
