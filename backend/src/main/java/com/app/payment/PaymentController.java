@@ -76,6 +76,18 @@ public class PaymentController {
             orderId,user,id,orderNumber,"EXTENSION",currency,amount,snapshot);
         return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"baseAmountMinor",baseAmount,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"extensionDays",days));
     }
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/payments/{orderId}/cancel")
+    public ApiResponse<?> cancelOrder(@PathVariable UUID orderId,Authentication auth){
+        UUID user=UUID.fromString(auth.getName());
+        var rows=jdbc.query("SELECT invitation_id FROM customer_order WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING') AND NOT EXISTS (SELECT 1 FROM payment_transaction p WHERE p.order_id=customer_order.id)",
+            (rs,n)->rs.getObject("invitation_id",UUID.class),orderId,user);
+        if(rows.isEmpty())throw new IllegalArgumentException("Order cannot be cancelled after a provider checkout has been created");
+        jdbc.update("UPDATE customer_order SET status='CANCELLED',updated_at=now() WHERE id=? AND user_id=?",orderId,user);
+        if("INVITATION".equals(jdbc.queryForObject("SELECT order_type FROM customer_order WHERE id=?",String.class,orderId)))
+            jdbc.update("UPDATE invitation SET status='DRAFT',updated_at=now() WHERE id=? AND status='PENDING_PAYMENT'",rows.get(0));
+        return ApiResponse.success(Map.of("orderId",orderId,"status","CANCELLED"));
+    }
     @PostMapping("/payments/{orderId}/checkout")
     public ApiResponse<?> checkout(@PathVariable UUID orderId,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
