@@ -1,25 +1,46 @@
 name: Platform CI
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
-    paths: ["backend/**","frontend/**","docker-compose.yml",".github/workflows/backend-ci.yml"]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-ci.yml"
+
 permissions:
   contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
     services:
       postgres:
         image: postgres:16
         env:
-      CI: "true"
+          POSTGRES_DB: digital_invitation_ci
+          POSTGRES_USER: di_ci
+          POSTGRES_PASSWORD: di_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U di_ci -d digital_invitation_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
+          cache-dependency-path: backend/pom.xml
       - name: Check frontend JavaScript syntax
         run: |
           node --check frontend/app.js
@@ -28,7 +49,7 @@ jobs:
           node --check frontend/verify.js
           node --check frontend/forgot.js
           node --check frontend/reset.js
-      - name: Verify backend
+      - name: Verify backend and PostgreSQL migrations
         working-directory: backend
         run: mvn --batch-mode verify
       - name: Validate Docker Compose configuration
