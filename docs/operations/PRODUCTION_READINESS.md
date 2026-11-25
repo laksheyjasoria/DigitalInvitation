@@ -35,8 +35,8 @@ This implementation is an integration milestone. Do not accept live customers un
 - Email outbox sends verification/reset messages when SMTP is enabled, but bounce/dead-letter operations need admin tooling.
 - FileServer adapter paths are configurable but not verified against the deployed upload/delete contract.
 - Razorpay is the first concrete payment adapter; other providers and provider selection are not implemented.
-- Tax calculation, coupons, extension purchases, refund administration and payment reconciliation UI are not complete.
-- RSVP capture, attendee management, invitation analytics and full calendar/localization rendering remain.
+- Configurable percentage tax and extension purchases are implemented in the current branch; coupons, refund administration and payment reconciliation UI are not complete.
+- Basic configurable RSVP capture and owner response listing are implemented; attendee management, invitation analytics and full calendar/localization rendering remain.
 - Admin dashboard is a first control surface; full user/support/role management, admin MFA and audit search UI remain.
 - UI end-to-end, accessibility, browser, mobile, load and security testing remain.
 
