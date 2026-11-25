@@ -21,7 +21,7 @@ public class InvitationQrController {
  public InvitationQrController(JdbcTemplate jdbc,@Value("${app.public-base-url}")String baseUrl){this.jdbc=jdbc;this.baseUrl=baseUrl;}
  @GetMapping(value="/{slug}/qr",produces=MediaType.IMAGE_PNG_VALUE)
  public ResponseEntity<byte[]> qr(@PathVariable String slug)throws Exception{
-  var rows=jdbc.queryForList("SELECT public_slug FROM invitation_publication WHERE public_slug=? AND revoked_at IS NULL AND expires_at>now()",slug);
+  var rows=jdbc.queryForList("SELECT public_slug FROM invitation_publication WHERE public_slug=? ",slug);
   if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.GONE,"Invitation expired or unavailable");
   String url=baseUrl.replaceAll("/+$","")+"/i/"+slug;
   BitMatrix matrix=new MultiFormatWriter().encode(url,BarcodeFormat.QR_CODE,420,420,Map.of(EncodeHintType.MARGIN,2));
