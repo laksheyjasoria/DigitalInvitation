@@ -89,17 +89,28 @@ public class PaymentController {
             jdbc.update("UPDATE invitation SET status='DRAFT',updated_at=now() WHERE id=? AND status='PENDING_PAYMENT'",rows.get(0));
         return ApiResponse.success(Map.of("orderId",orderId,"status","CANCELLED"));
     }
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/payments/{orderId}/checkout")
     public ApiResponse<?> checkout(@PathVariable UUID orderId,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
-        var rows=jdbc.query("SELECT o.id,o.amount_minor,o.currency,o.order_number FROM customer_order o WHERE o.id=? AND o.user_id=? AND o.status IN ('CREATED','PAYMENT_PENDING')",
-            (rs,n)->Map.of("id",rs.getObject("id").toString(),"amount",rs.getLong("amount_minor"),"currency",rs.getString("currency"),"receipt",rs.getString("order_number")),orderId,UUID.fromString(auth.getName()));
-        if(rows.isEmpty())throw new IllegalArgumentException("Order not found or not payable");var o=rows.get(0);
-        Map<String,Object> result=provider.createOrder((Long)o.get("amount"),(String)o.get("currency"),(String)o.get("receipt"));
-        String gatewayId=String.valueOf(result.get("id"));
-        jdbc.update("INSERT INTO payment_transaction(order_id,provider,provider_order_id,status,amount_minor,currency) VALUES (?, ?, ?,'INITIATED',?,?)",orderId,provider.name(),gatewayId,o.get("amount"),o.get("currency"));
-        jdbc.update("UPDATE customer_order SET status='PAYMENT_PENDING',updated_at=now() WHERE id=?",orderId);
-        return ApiResponse.success(Map.of("provider",provider.name(),"keyId",provider.publicKey(),"providerOrder",result));
+        UUID user=UUID.fromString(auth.getName());
+        var rows=jdbc.query("SELECT o.id,o.amount_minor,o.currency,o.order_number,o.status FROM customer_order o WHERE o.id=? AND o.user_id=? AND o.status IN ('CREATED','PAYMENT_PENDING') FOR UPDATE",
+            (rs,n)->Map.of("id",rs.getObject("id").toString(),"amount",rs.getLong("amount_minor"),"currency",rs.getString("currency"),"receipt",rs.getString("order_number"),"status",rs.getString("status")),orderId,user);
+        if(rows.isEmpty())throw new IllegalArgumentException("Order not found or not payable");
+        var order=rows.get(0);
+        var existing=jdbc.query("SELECT provider_order_id FROM payment_transaction WHERE order_id=? AND provider=? AND status IN ('INITIATED','AUTHORIZED') ORDER BY created_at DESC LIMIT 1",
+            (rs,n)->rs.getString("provider_order_id"),orderId,provider.name());
+        if(!existing.isEmpty()){
+            Map<String,Object> providerOrder=Map.of("id",existing.get(0),"amount",order.get("amount"),"currency",order.get("currency"));
+            return ApiResponse.success(Map.of("provider",provider.name(),"keyId",provider.publicKey(),"providerOrder",providerOrder,"reused",true));
+        }
+        Map<String,Object> result=provider.createOrder((Long)order.get("amount"),(String)order.get("currency"),(String)order.get("receipt"));
+        Object gatewayId=result==null?null:result.get("id");
+        if(gatewayId==null||String.valueOf(gatewayId).isBlank())throw new IllegalStateException("Payment provider did not return an order ID");
+        jdbc.update("INSERT INTO payment_transaction(order_id,provider,provider_order_id,status,amount_minor,currency) VALUES (?,?,?,'INITIATED',?,?)",
+            orderId,provider.name(),String.valueOf(gatewayId),order.get("amount"),order.get("currency"));
+        jdbc.update("UPDATE customer_order SET status='PAYMENT_PENDING',updated_at=now() WHERE id=? AND user_id=?",orderId,user);
+        return ApiResponse.success(Map.of("provider",provider.name(),"keyId",provider.publicKey(),"providerOrder",result,"reused",false));
     }
     public record VerifyRequest(String providerOrderId,String providerPaymentId,String signature){}
     @org.springframework.transaction.annotation.Transactional
@@ -132,7 +143,7 @@ public class PaymentController {
             if(inserted==0)return ApiResponse.success(Map.of("received",true,"duplicate",true));
             var payment=root.path("payload").path("payment").path("entity");
             String paymentId=payment.path("id").asText();String gatewayOrderId=payment.path("order_id").asText();
-            if(eventType.equals("payment.captured")||eventType.equals("order.paid")){
+            if(eventType.equals("payment.captured")){
                 if(paymentId.isBlank()||gatewayOrderId.isBlank())throw new IllegalArgumentException("Captured payment event is incomplete");
                 int updated=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND amount_minor=? AND currency=? AND status IN ('INITIATED','AUTHORIZED')",
                     paymentId,gatewayOrderId,payment.path("amount").asLong(),payment.path("currency").asText());
@@ -141,8 +152,8 @@ public class PaymentController {
                     settlement.settle(paidOrderId,provider.name(),paymentId);
                 }
             }else if(eventType.equals("payment.failed")){
-                jdbc.update("UPDATE payment_transaction SET status='FAILED',updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND status='INITIATED'",gatewayOrderId);
-                jdbc.update("UPDATE customer_order SET status='FAILED',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?) AND status<>'PAID'",gatewayOrderId);
+                jdbc.update("UPDATE payment_transaction SET status='FAILED',updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED')",gatewayOrderId);
+                jdbc.update("UPDATE customer_order SET status='CREATED',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?) AND status='PAYMENT_PENDING'",gatewayOrderId);
             }
             jdbc.update("UPDATE payment_webhook_event SET processing_status='PROCESSED',processed_at=now() WHERE provider='RAZORPAY' AND provider_event_id=?",eventId);
         }catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid webhook payload");}
