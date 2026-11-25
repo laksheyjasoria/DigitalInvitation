@@ -15,6 +15,7 @@ public class PolicyController {
  public ApiResponse<?> current(){
   return ApiResponse.success(jdbc.queryForList("SELECT policy_type,version_number,title,body_markdown,published_at FROM policy_document WHERE status='PUBLISHED' AND (policy_type,version_number) IN (SELECT policy_type,max(version_number) FROM policy_document WHERE status='PUBLISHED' GROUP BY policy_type) ORDER BY policy_type"));
  }
+ @org.springframework.transaction.annotation.Transactional
  @PostMapping("/api/v1/admin/policies/{type}")
  public ApiResponse<?> publish(@PathVariable String type,@RequestBody Map<String,String> body,Authentication auth){
   String kind=type.toUpperCase();if(!java.util.Set.of("TERMS","PRIVACY").contains(kind))throw new IllegalArgumentException("Policy type must be TERMS or PRIVACY");
