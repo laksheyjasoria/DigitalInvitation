@@ -53,9 +53,10 @@ public class PaymentController {
     @org.springframework.transaction.annotation.Transactional\n    @PostMapping("/payments/{orderId}/verify")
     public ApiResponse<?> verify(@PathVariable UUID orderId,@RequestBody VerifyRequest r,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
-        var order=jdbc.query("SELECT amount_minor,currency FROM customer_order WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING')",
-            (rs,n)->Map.of("amount",rs.getLong("amount_minor"),"currency",rs.getString("currency")),orderId,UUID.fromString(auth.getName()));
-        if(order.isEmpty())throw new IllegalArgumentException("Order not found or already processed");
+        var order=jdbc.query("SELECT amount_minor,currency,status FROM customer_order WHERE id=? AND user_id=?",
+            (rs,n)->Map.of("amount",rs.getLong("amount_minor"),"currency",rs.getString("currency"),"status",rs.getString("status")),orderId,UUID.fromString(auth.getName()));
+        if(order.isEmpty())throw new IllegalArgumentException("Order not found");
+        if("PAID".equals(order.get(0).get("status")))return ApiResponse.success(Map.of("orderId",orderId,"status","PAID"));
         long amount=((Number)order.get(0).get("amount")).longValue();String currency=(String)order.get(0).get("currency");
         if(!provider.verifyCheckoutSignature(r.providerOrderId(),r.providerPaymentId(),r.signature()) ||
            !provider.verifyPaymentDetails(r.providerPaymentId(),r.providerOrderId(),amount,currency))
