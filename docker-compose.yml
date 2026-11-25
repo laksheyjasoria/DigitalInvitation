@@ -7,8 +7,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-digital_invitation}
       POSTGRES_USER: ${POSTGRES_USER:-digital_invitation}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,6 +15,7 @@ services:
       timeout: 5s
       retries: 10
     networks: [app-net]
+
   backend:
     build:
       context: ./backend
@@ -29,13 +28,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-digital_invitation}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-digital_invitation}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-http://localhost:8080}
-      APP_JWT_ISSUER: ${APP_JWT_ISSUER:-digital-invitation}
-      APP_JWT_SECRET: ${APP_JWT_SECRET:?Set APP_JWT_SECRET in .env}
-      APP_JWT_ACCESS_TOKEN_MINUTES: ${APP_JWT_ACCESS_TOKEN_MINUTES:-15}
-      APP_JWT_REFRESH_TOKEN_DAYS: ${APP_JWT_REFRESH_TOKEN_DAYS:-30}
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      APP_PUBLIC_BASE_URL: ${APP_PUBLIC_BASE_URL:-http://localhost:8088}
+    expose: ["8080"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,8 +40,23 @@ services:
       retries: 10
       start_period: 40s
     networks: [app-net]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: digital-invitation-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8088}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks: [app-net]
+
 volumes:
   postgres_data:
+
 networks:
   app-net:
     driver: bridge
