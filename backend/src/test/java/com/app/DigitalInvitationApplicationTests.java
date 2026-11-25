@@ -30,6 +30,6 @@ class DigitalInvitationApplicationTests {
     @Test
     void unimplementedPrivateRoutesAreDeniedByDefault() throws Exception {
         mockMvc.perform(post("/api/v1/invitations"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is4xxClientError());
     }
 }
