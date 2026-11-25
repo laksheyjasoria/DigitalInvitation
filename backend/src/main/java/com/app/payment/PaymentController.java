@@ -15,14 +15,24 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
     private final JdbcTemplate jdbc;private final PaymentProvider provider;private final ObjectMapper mapper;private final com.app.config.SystemSettingService settings;
     public PaymentController(JdbcTemplate jdbc,ObjectProvider<PaymentProvider> provider,ObjectMapper mapper,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.provider=provider.getIfAvailable();this.mapper=mapper;this.settings=settings;}
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
-        UUID user=UUID.fromString(auth.getName());jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",UUID.class,id,user);
+        UUID user=UUID.fromString(auth.getName());
+        var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",id,user);
         long amount=settings.getLong("pricing.base-price-minor");
         String currency=settings.getString("pricing.currency");
+        int graceDays=settings.getInt("invitation.expiry.grace-days");
+        long expiryVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
+        String lastFunctionDate=invitation.get("last_function_date")==null?"":invitation.get("last_function_date").toString();
+        String timezone=String.valueOf(invitation.get("timezone"));
+        Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone);
+        String pricingSnapshot;
+        try{pricingSnapshot=mapper.writeValueAsString(Map.of("amountMinor",amount,"currency",currency,"expiryPolicy",expiryPolicy));}
+        catch(Exception e){throw new IllegalStateException("Unable to snapshot order terms");}
         UUID orderId=UUID.randomUUID();String orderNumber="DI-"+UUID.randomUUID().toString().replace("-","").substring(0,18).toUpperCase();
-        jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,'CREATED',jsonb_build_object('amountMinor',?,'currency',?))",orderId,user,id,orderNumber,currency,amount,amount,currency);
+        jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,'CREATED',?::jsonb)",orderId,user,id,orderNumber,currency,amount,pricingSnapshot);
         jdbc.update("UPDATE invitation SET status='PENDING_PAYMENT',updated_at=now() WHERE id=? AND owner_user_id=?",id,user);
         return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"amountMinor",amount,"currency",currency));
     }
