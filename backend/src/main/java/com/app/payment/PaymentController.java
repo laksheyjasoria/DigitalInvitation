@@ -35,8 +35,16 @@ public class PaymentController {
         String lastFunctionDate=invitation.get("last_function_date")==null?"":invitation.get("last_function_date").toString();
         String timezone=String.valueOf(invitation.get("timezone"));
         Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone,"paymentRequired",true);
+        var requiredConsents=jdbc.query("SELECT substring(setting_key from 17) consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",(rs,n)->rs.getString("consent_key"));
+        var acceptedRows=jdbc.query("SELECT consent_key,consent_version FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=(SELECT version FROM invitation WHERE id=?) AND accepted=true",
+            (rs,n)->Map.of("key",rs.getString("consent_key"),"version",rs.getString("consent_version")),id,user,id);
+        Map<String,String> consentVersions=new java.util.HashMap<>();
+        acceptedRows.forEach(row->consentVersions.put((String)row.get("key"),(String)row.get("version")));
+        if(requiredConsents.isEmpty()||!consentVersions.keySet().equals(new java.util.HashSet<>(requiredConsents)))
+            throw new IllegalArgumentException("All required declarations and policy versions must be accepted before checkout");
+
         String pricingSnapshot;
-        try{pricingSnapshot=mapper.writeValueAsString(Map.of("baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"expiryPolicy",expiryPolicy));}
+        try{pricingSnapshot=mapper.writeValueAsString(Map.of("baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"expiryPolicy",expiryPolicy,"requiredConsents",requiredConsents,"consentVersions",consentVersions));}
         catch(Exception e){throw new IllegalStateException("Unable to snapshot order terms");}
         UUID orderId=UUID.randomUUID();String orderNumber="DI-"+UUID.randomUUID().toString().replace("-","").substring(0,18).toUpperCase();
         jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,'CREATED',?::jsonb)",orderId,user,id,orderNumber,currency,amount,pricingSnapshot);
