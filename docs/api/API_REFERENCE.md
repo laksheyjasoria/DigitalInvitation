@@ -27,6 +27,9 @@ Authenticated endpoints use Authorization: Bearer <access-token>. Responses use 
 - PUT /api/v1/invitations/{id} — owner-scoped draft update.
 - POST /api/v1/invitations/{id}/consents — record required declarations and policy versions.
 - POST /api/v1/invitations/{id}/publish — publish after payment and consent checks.
+- POST /api/v1/invitations/{id}/extensions/orders — create an extension purchase when enabled.
+- GET /api/v1/invitations/{id}/rsvps — owner-only RSVP responses.
+- POST /api/v1/public/invitations/{slug}/rsvp — submit an RSVP when enabled.
 - POST /api/v1/invitations/{id}/media — upload private image.
 - GET /api/v1/invitations/{id}/media — list owner's media.
 - GET /api/v1/invitations/{id}/media/{mediaId}/content — authenticated private stream.
@@ -35,6 +38,7 @@ Authenticated endpoints use Authorization: Bearer <access-token>. Responses use 
 ## Payments
 - POST /api/v1/invitations/{id}/orders — create order from configured price.
 - POST /api/v1/payments/{orderId}/checkout — create provider checkout order.
+- POST /api/v1/payments/{orderId}/cancel — cancel an order only before a provider checkout exists.
 - POST /api/v1/payments/{orderId}/verify — verify checkout signature and captured payment with provider.
 - POST /api/v1/webhooks/razorpay — verify signed webhook events.
 
