@@ -32,7 +32,7 @@ public class AdminCatalogController {
         Object definition=b.get("definition");if(!(definition instanceof Map))throw new IllegalArgumentException("Template definition is required");
         Integer current=jdbc.queryForObject("SELECT current_version FROM invitation_template WHERE id=?",Integer.class,id);if(current==null)throw new IllegalArgumentException("Template not found");
         int next=current+1;UUID version=UUID.randomUUID();
-        try{jdbc.update("INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by) VALUES (?,?,?,?,?)",version,id,next,mapper.writeValueAsString(definition),UUID.fromString(auth.getName()));
+        try{jdbc.update("INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by) VALUES (?,?,?,?::jsonb,?)",version,id,next,mapper.writeValueAsString(definition),UUID.fromString(auth.getName()));
             jdbc.update("UPDATE invitation_template SET current_version=?,updated_at=now() WHERE id=?",next,id);
         }catch(Exception e){throw new IllegalArgumentException("Unable to version template");}
         return ApiResponse.success(Map.of("versionId",version,"versionNumber",next));
