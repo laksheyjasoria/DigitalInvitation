@@ -1,0 +1,22 @@
+# Java
+**/target/
+*.class
+*.jar
+# IDE
+.idea/
+.vscode/
+*.iml
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Frontend
+node_modules/
+dist/
+coverage/
+# Runtime
+logs/
+*.log
+.DS_Store
