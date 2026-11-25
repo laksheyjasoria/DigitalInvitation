@@ -38,10 +38,10 @@ public class PaymentController {
         java.time.ZoneId.of(timezone);
         Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone,"paymentRequired",true);
         var requiredConsents=jdbc.query("SELECT substring(setting_key from 17) consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",(rs,n)->rs.getString("consent_key"));
-        var acceptedRows=jdbc.query("SELECT consent_key,consent_version FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=(SELECT version FROM invitation WHERE id=?) AND accepted=true",
+        var acceptedRows=jdbc.query("SELECT DISTINCT ON (consent_key) consent_key,consent_version FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=(SELECT version FROM invitation WHERE id=?) AND accepted=true ORDER BY consent_key,accepted_at DESC",
             (rs,n)->Map.of("key",rs.getString("consent_key"),"version",rs.getString("consent_version")),id,user,id);
         Map<String,String> consentVersions=new java.util.HashMap<>();
-        acceptedRows.forEach(row->consentVersions.put((String)row.get("key"),(String)row.get("version")));
+        acceptedRows.forEach(row->consentVersions.putIfAbsent((String)row.get("key"),(String)row.get("version")));
         consentVersions.keySet().retainAll(new java.util.HashSet<>(requiredConsents));
         for(String key:requiredConsents){
             if(key.equals("terms")||key.equals("privacy")){
