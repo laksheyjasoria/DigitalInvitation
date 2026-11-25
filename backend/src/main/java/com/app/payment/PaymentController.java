@@ -40,6 +40,7 @@ public class PaymentController {
             (rs,n)->Map.of("key",rs.getString("consent_key"),"version",rs.getString("consent_version")),id,user,id);
         Map<String,String> consentVersions=new java.util.HashMap<>();
         acceptedRows.forEach(row->consentVersions.put((String)row.get("key"),(String)row.get("version")));
+        consentVersions.keySet().retainAll(new java.util.HashSet<>(requiredConsents));
         if(requiredConsents.isEmpty()||!consentVersions.keySet().equals(new java.util.HashSet<>(requiredConsents)))
             throw new IllegalArgumentException("All required declarations and policy versions must be accepted before checkout");
 
