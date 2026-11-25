@@ -33,7 +33,9 @@ public class PaymentController {
         int graceDays=settings.getInt("invitation.expiry.grace-days");
         long expiryVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
         String lastFunctionDate=invitation.get("last_function_date")==null?"":invitation.get("last_function_date").toString();
+        if(lastFunctionDate.isBlank())throw new IllegalArgumentException("Set the last function date before checkout");
         String timezone=String.valueOf(invitation.get("timezone"));
+        java.time.ZoneId.of(timezone);
         Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone,"paymentRequired",true);
         var requiredConsents=jdbc.query("SELECT substring(setting_key from 17) consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",(rs,n)->rs.getString("consent_key"));
         var acceptedRows=jdbc.query("SELECT consent_key,consent_version FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=(SELECT version FROM invitation WHERE id=?) AND accepted=true",
@@ -41,6 +43,13 @@ public class PaymentController {
         Map<String,String> consentVersions=new java.util.HashMap<>();
         acceptedRows.forEach(row->consentVersions.put((String)row.get("key"),(String)row.get("version")));
         consentVersions.keySet().retainAll(new java.util.HashSet<>(requiredConsents));
+        for(String key:requiredConsents){
+            if(key.equals("terms")||key.equals("privacy")){
+                String policyType=key.equals("terms")?"TERMS":"PRIVACY";
+                String currentVersion=String.valueOf(jdbc.queryForObject("SELECT max(version_number) FROM policy_document WHERE policy_type=? AND status='PUBLISHED'",Integer.class,policyType));
+                if(!currentVersion.equals(consentVersions.get(key)))throw new IllegalArgumentException("Please review and accept the latest "+policyType+" policy before checkout");
+            }
+        }
         if(requiredConsents.isEmpty()||!consentVersions.keySet().equals(new java.util.HashSet<>(requiredConsents)))
             throw new IllegalArgumentException("All required declarations and policy versions must be accepted before checkout");
 
