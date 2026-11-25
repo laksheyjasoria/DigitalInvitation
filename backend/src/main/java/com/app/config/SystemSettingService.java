@@ -13,6 +13,7 @@ public class SystemSettingService {
  public int getInt(String key){return read(key,Integer.class);}
  public long getLong(String key){return read(key,Long.class);}
  public boolean getBoolean(String key){return read(key,Boolean.class);}
+ public java.math.BigDecimal getDecimal(String key){return read(key,java.math.BigDecimal.class);}
  public <T>T read(String key,Class<T> type){
   String json=jdbc.query("SELECT setting_value::text FROM system_setting WHERE setting_key=?",rs->rs.next()?rs.getString(1):null,key);
   if(json==null)throw new IllegalStateException("Required system setting is missing: "+key);
