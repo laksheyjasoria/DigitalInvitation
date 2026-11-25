@@ -26,6 +26,13 @@ public class RazorpayPaymentProvider implements PaymentProvider {
     public Map<String,Object> createOrder(long amountMinor,String currency,String receipt){
         return client.post().uri("/orders").body(Map.of("amount",amountMinor,"currency",currency,"receipt",receipt,"payment_capture",1)).retrieve().body(Map.class);
     }
+    public boolean verifyPaymentDetails(String paymentId,String orderId,long amountMinor,String currency){
+        Map payment=client.get().uri("/payments/{id}",paymentId).retrieve().body(Map.class);
+        return payment!=null && "captured".equals(payment.get("status"))
+            && orderId.equals(payment.get("order_id"))
+            && Long.valueOf(amountMinor).equals(((Number)payment.get("amount")).longValue())
+            && currency.equals(payment.get("currency"));
+    }
     public boolean verifyCheckoutSignature(String orderId,String paymentId,String signature){
         return constantTime(hmac(keySecret,orderId+"|"+paymentId),signature);
     }
