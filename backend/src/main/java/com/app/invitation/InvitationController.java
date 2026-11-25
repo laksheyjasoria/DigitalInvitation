@@ -84,12 +84,10 @@ public class InvitationController {
         if("EXPIRED".equals(inv.get("status"))||"SUSPENDED".equals(inv.get("status"))||"DELETED".equals(inv.get("status")))
             throw new IllegalArgumentException("Invitation cannot be published in its current state");
         if(inv.get("lastFunctionDate").toString().isBlank())throw new IllegalArgumentException("At least one function date is required");
-        long consentCount=jdbc.queryForObject("SELECT count(*) FROM invitation_consent WHERE invitation_id=? AND user_id=? AND accepted=true AND content_version=?",Long.class,id,user,inv.get("version"));
-        long required=jdbc.queryForObject("SELECT count(*) FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",Long.class);
-        if(required==0||consentCount<required)throw new IllegalArgumentException("Please complete all required declarations before publishing");
-
         int grace;long expirySettingVersion;String agreedDate=inv.get("lastFunctionDate").toString();String agreedTimezone=inv.get("timezone").toString();
         boolean paymentRequired=settings.getBoolean("invitation.publication.payment-required");
+        java.util.List<String> requiredConsentKeys=new java.util.ArrayList<>();
+        java.util.Map<String,String> consentVersions=new java.util.HashMap<>();
         if(!inv.get("orderSnapshot").toString().isBlank()){
             try{
                 var snapshot=mapper.readTree(inv.get("orderSnapshot").toString());
@@ -102,11 +100,36 @@ public class InvitationController {
                 String orderTimezone=policy.path("timezone").asText("");
                 if(!orderDate.equals(agreedDate)||!orderTimezone.equals(agreedTimezone))
                     throw new IllegalStateException("Invitation event date or timezone differs from the accepted order snapshot");
+                snapshot.path("requiredConsents").forEach(node->requiredConsentKeys.add(node.asText()));
+                var consentNode=snapshot.path("consentVersions");
+                consentNode.fields().forEachRemaining(entry->consentVersions.put(entry.getKey(),entry.getValue().asText()));
             }catch(IllegalStateException e){throw e;}catch(Exception e){throw new IllegalStateException("Unable to read the agreed order policy snapshot",e);}
         }else{
             grace=settings.getInt("invitation.expiry.grace-days");
             expirySettingVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
+            requiredConsentKeys=jdbc.query("SELECT substring(setting_key from 17) FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",(rs,n)->rs.getString(1));
+            var accepted=jdbc.query("SELECT consent_key,consent_version FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=? AND accepted=true",
+                (rs,n)->Map.of("key",rs.getString("consent_key"),"version",rs.getString("consent_version")),id,user,inv.get("version"));
+            accepted.forEach(row->consentVersions.put((String)row.get("key"),(String)row.get("version")));
+            for(String key:requiredConsentKeys){
+                if(key.equals("terms")||key.equals("privacy")){
+                    String type=key.equals("terms")?"TERMS":"PRIVACY";
+                    String current=String.valueOf(jdbc.queryForObject("SELECT max(version_number) FROM policy_document WHERE policy_type=? AND status='PUBLISHED'",Integer.class,type));
+                    if(!current.equals(consentVersions.get(key)))throw new IllegalArgumentException("Please review and accept the latest "+type+" policy");
+                }
+            }
         }
+        if(requiredConsentKeys.isEmpty()||!consentVersions.keySet().equals(new java.util.HashSet<>(requiredConsentKeys)))
+            throw new IllegalArgumentException("All required declarations must be accepted for this purchase");
+        long validConsentCount=0;
+        for(String key:requiredConsentKeys){
+            String acceptedVersion=consentVersions.get(key);
+            if(acceptedVersion==null)continue;
+            validConsentCount+=jdbc.queryForObject("SELECT count(*) FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=? AND consent_key=? AND consent_version=? AND accepted=true",
+                Long.class,id,user,inv.get("version"),key,acceptedVersion);
+        }
+        if(validConsentCount!=requiredConsentKeys.size())
+            throw new IllegalArgumentException("Consent does not match the invitation content and policy versions");
         if(paymentRequired&&!"PAID".equals(inv.get("orderStatus")))throw new IllegalArgumentException("A verified paid order is required before publication");
         if(grace<0||grace>365)throw new IllegalStateException("Agreed expiry grace period is invalid");
         ZoneId zone=ZoneId.of(agreedTimezone);
