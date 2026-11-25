@@ -3,7 +3,7 @@
 This implementation is an integration milestone. Do not accept live customers until every applicable gate is completed and signed off.
 
 ## Code and automated verification
-- [ ] Latest-head Maven verify and PostgreSQL migration smoke test pass on Java 21 (CI currently being rerun after correcting the INR JSON seed).
+- [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test and Docker Compose validation passed in GitHub Actions run #234 on the current stabilization changes.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
 - [ ] Add tests for auth token expiry, replay, brute-force limits, suspended accounts and password reset.
