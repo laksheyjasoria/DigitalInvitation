@@ -3,6 +3,7 @@ package com.app;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -11,6 +12,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Starts the real application against PostgreSQL so Flyway migrations and
  * Spring bean wiring are exercised in CI, not merely Java compilation.
  */
+@EnabledIfEnvironmentVariable(named = "CI", matches = "true")
+@ActiveProfiles("ci")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
         "app.security.jwt.secret=ci-only-secret-that-is-long-enough-for-hmac-sha256",
         "app.public-base-url=http://localhost:8080",
