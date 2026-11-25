@@ -119,6 +119,7 @@ public class InvitationController {
                 }
             }
         }
+        consentVersions.keySet().retainAll(new java.util.HashSet<>(requiredConsentKeys));
         if(requiredConsentKeys.isEmpty()||!consentVersions.keySet().equals(new java.util.HashSet<>(requiredConsentKeys)))
             throw new IllegalArgumentException("All required declarations must be accepted for this purchase");
         long validConsentCount=0;
