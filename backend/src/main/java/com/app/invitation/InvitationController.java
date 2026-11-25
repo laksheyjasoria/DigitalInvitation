@@ -19,12 +19,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/invitations")
 public class InvitationController {
-    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;
-    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;}
+    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;private final com.app.config.SystemSettingService settings;
+    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;this.settings=settings;}
     public record CreateRequest(@NotNull UUID templateVersionId,@NotBlank String title,Map<String,Object> content,LocalDate lastFunctionDate,String timezone){}
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody CreateRequest r,Authentication auth){
-        UUID owner=UUID.fromString(auth.getName());String tz=r.timezone()==null?"Asia/Kolkata":r.timezone();ZoneId.of(tz);UUID id=UUID.randomUUID();
+        UUID owner=UUID.fromString(auth.getName());String tz=r.timezone()==null?settings.getString("invitation.default-timezone"):r.timezone();ZoneId.of(tz);UUID id=UUID.randomUUID();
         try{jdbc.update("INSERT INTO invitation(id,owner_user_id,template_version_id,title,content,last_function_date,timezone) VALUES (?,?,?,?,?::jsonb,?,?)",id,owner,r.templateVersionId(),r.title().trim(),mapper.writeValueAsString(r.content()==null?Map.of():r.content()),r.lastFunctionDate(),tz);}
         catch(Exception e){throw new IllegalArgumentException("Unable to create invitation. Verify the selected template and event date.");}
         return ApiResponse.success(Map.of("id",id,"status","DRAFT"));
@@ -63,12 +63,12 @@ public class InvitationController {
         UUID user=UUID.fromString(auth.getName());
         var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,o.status order_status FROM invitation i LEFT JOIN LATERAL (SELECT status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=?",(rs,n)->Map.of("title",rs.getString("title"),"content",rs.getString("content"),"lastFunctionDate",rs.getDate("last_function_date")==null?"":rs.getDate("last_function_date").toLocalDate().toString(),"timezone",rs.getString("timezone"),"templateVersionId",rs.getObject("template_version_id"),"version",rs.getLong("version"),"orderStatus",rs.getString("order_status")==null?"":rs.getString("order_status")),id,user);
         if(rows.isEmpty())throw new IllegalArgumentException("Invitation not found");var inv=rows.get(0);
-        if(!"PAID".equals(inv.get("orderStatus")))throw new IllegalArgumentException("A verified paid order is required before publication");
+        if(settings.getBoolean("invitation.publication.payment-required")&&!"PAID".equals(inv.get("orderStatus")))throw new IllegalArgumentException("A verified paid order is required before publication");
         if(inv.get("lastFunctionDate").toString().isBlank())throw new IllegalArgumentException("At least one function date is required");
         long consentCount=jdbc.queryForObject("SELECT count(*) FROM invitation_consent WHERE invitation_id=? AND user_id=? AND accepted=true AND content_version=?",Long.class,id,user,inv.get("version"));
         long required=jdbc.queryForObject("SELECT count(*) FROM system_setting WHERE setting_key LIKE 'consent.required.%'",Long.class);
         if(required==0||consentCount<required)throw new IllegalArgumentException("Please complete all required declarations before publishing");
-        int grace=jdbc.query("SELECT setting_value::text FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",rs->rs.next()?Integer.parseInt(rs.getString(1).replace("\"","")):7);
+        int grace=settings.getInt("invitation.expiry.grace-days");
         if(grace<0||grace>365)throw new IllegalStateException("Configured expiry grace period is invalid");
         ZoneId zone=ZoneId.of(inv.get("timezone").toString());var expiry=LocalDate.parse(inv.get("lastFunctionDate").toString()).plusDays(grace+1L).atStartOfDay(zone).toInstant();
         byte[] bytes=new byte[24];random.nextBytes(bytes);String slug=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
