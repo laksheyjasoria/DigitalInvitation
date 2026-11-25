@@ -18,7 +18,8 @@ public class PaymentSettlementService {
    (rs,n)->Map.of("userId",rs.getObject("user_id",UUID.class),"invitationId",rs.getObject("invitation_id",UUID.class),"type",rs.getString("order_type"),"status",rs.getString("status"),"snapshot",rs.getString("snapshot")),orderId);
   if(rows.isEmpty())throw new IllegalArgumentException("Order not found");
   var order=rows.get(0);if("PAID".equals(order.get("status")))return;
-  jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=? AND status IN ('CREATED','PAYMENT_PENDING')",orderId);
+  int paid=jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=? AND status IN ('CREATED','PAYMENT_PENDING')",orderId);
+  if(paid==0)return;
   UUID invitationId=(UUID)order.get("invitationId"),userId=(UUID)order.get("userId");
   if("INVITATION".equals(order.get("type"))){
    jdbc.update("UPDATE invitation SET status='READY_TO_PUBLISH',updated_at=now() WHERE id=? AND status='PENDING_PAYMENT'",invitationId);
