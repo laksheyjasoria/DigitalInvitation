@@ -22,7 +22,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/v1/auth/**", "/api/v1/webhooks/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/**", "/api/v1/catalog/**").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN","SUPER_ADMIN")
                 .anyRequest().authenticated())
