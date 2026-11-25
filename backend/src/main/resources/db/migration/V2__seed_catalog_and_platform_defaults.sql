@@ -6,7 +6,7 @@ INSERT INTO system_setting(setting_key,setting_value,value_type,description) VAL
  ('invitation.media.max-file-bytes','10485760'::jsonb,'INTEGER','Maximum individual media upload size in bytes'),
  ('invitation.media.max-files','30'::jsonb,'INTEGER','Maximum media files per invitation'),
  ('pricing.base-price-minor','49900'::jsonb,'INTEGER','Default invitation price in minor currency units'),
- ('pricing.currency','"INR"'::jsonb,'STRING','Default checkout currency'),
+ ('pricing.currency',to_json('INR'::text),'STRING','Default checkout currency'),
  ('consent.required.accuracy','true'::jsonb,'BOOLEAN','Customer confirms invitation details are accurate'),
  ('consent.required.preview','true'::jsonb,'BOOLEAN','Customer confirms preview was reviewed'),
  ('consent.required.rights','true'::jsonb,'BOOLEAN','Customer confirms rights and permissions for submitted content'),
