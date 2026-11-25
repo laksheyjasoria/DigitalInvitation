@@ -62,3 +62,19 @@ app:
   invitation:
     expiry:
       cron: ${APP_INVITATION_EXPIRY_CRON:0 */15 * * * *}
+
+  mail:
+    from: ${APP_MAIL_FROM:no-reply@example.invalid}
+    outbox-delay-ms: ${APP_MAIL_OUTBOX_DELAY_MS:15000}
+spring:
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
