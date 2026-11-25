@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class PolicyController {
- private final JdbcTemplate jdbc;
- public PolicyController(JdbcTemplate jdbc){this.jdbc=jdbc;}
+ private final JdbcTemplate jdbc;private final com.app.audit.AuditLogService audit;
+ public PolicyController(JdbcTemplate jdbc,com.app.audit.AuditLogService audit){this.jdbc=jdbc;this.audit=audit;}
  @GetMapping("/api/v1/public/policies/current")
  public ApiResponse<?> current(){
   return ApiResponse.success(jdbc.queryForList("SELECT policy_type,version_number,title,body_markdown,published_at FROM policy_document WHERE status='PUBLISHED' AND (policy_type,version_number) IN (SELECT policy_type,max(version_number) FROM policy_document WHERE status='PUBLISHED' GROUP BY policy_type) ORDER BY policy_type"));
@@ -23,6 +23,7 @@ public class PolicyController {
   int next=latest+1;UUID id=UUID.randomUUID();
   jdbc.update("UPDATE policy_document SET status='RETIRED' WHERE policy_type=? AND status='PUBLISHED'",kind);
   jdbc.update("INSERT INTO policy_document(id,policy_type,version_number,title,body_markdown,status,published_at,created_by) VALUES (?,?,?,?,?,'PUBLISHED',now(),?)",id,kind,next,title,text,UUID.fromString(auth.getName()));
+  audit.record(UUID.fromString(auth.getName()),"POLICY_PUBLISHED","POLICY_DOCUMENT",id.toString(),"SUCCESS",Map.of("type",kind,"version",next));
   return ApiResponse.success(Map.of("id",id,"type",kind,"version",next));
  }
 }
