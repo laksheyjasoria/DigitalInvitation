@@ -3,6 +3,8 @@ package com.app.payment;
 import com.app.common.api.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
@@ -22,7 +24,11 @@ public class PaymentController {
         UUID user=UUID.fromString(auth.getName());
         if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
         var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",id,user);
-        long amount=settings.getLong("pricing.base-price-minor");
+        long baseAmount=settings.getLong("pricing.base-price-minor");
+        BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
+        if(baseAmount<0||taxPercent.compareTo(BigDecimal.ZERO)<0||taxPercent.compareTo(new BigDecimal("100"))>0)throw new IllegalStateException("Configured pricing is invalid");
+        long taxAmount=BigDecimal.valueOf(baseAmount).multiply(taxPercent).divide(new BigDecimal("100"),0,RoundingMode.HALF_UP).longValueExact();
+        long amount=Math.addExact(baseAmount,taxAmount);
         String currency=settings.getString("pricing.currency");
         int graceDays=settings.getInt("invitation.expiry.grace-days");
         long expiryVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
@@ -30,12 +36,12 @@ public class PaymentController {
         String timezone=String.valueOf(invitation.get("timezone"));
         Map<String,Object> expiryPolicy=Map.of("graceDays",graceDays,"settingVersion",expiryVersion,"lastFunctionDate",lastFunctionDate,"timezone",timezone,"paymentRequired",true);
         String pricingSnapshot;
-        try{pricingSnapshot=mapper.writeValueAsString(Map.of("amountMinor",amount,"currency",currency,"expiryPolicy",expiryPolicy));}
+        try{pricingSnapshot=mapper.writeValueAsString(Map.of("baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"expiryPolicy",expiryPolicy));}
         catch(Exception e){throw new IllegalStateException("Unable to snapshot order terms");}
         UUID orderId=UUID.randomUUID();String orderNumber="DI-"+UUID.randomUUID().toString().replace("-","").substring(0,18).toUpperCase();
         jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,'CREATED',?::jsonb)",orderId,user,id,orderNumber,currency,amount,pricingSnapshot);
         jdbc.update("UPDATE invitation SET status='PENDING_PAYMENT',updated_at=now() WHERE id=? AND owner_user_id=?",id,user);
-        return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"amountMinor",amount,"currency",currency));
+        return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency));
     }
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/extensions/orders")
@@ -48,12 +54,15 @@ public class PaymentController {
             (rs,n)->Map.of("status",rs.getString("status"),"publicationId",rs.getObject("publication_id",UUID.class)),id,user);
         if(invitation.isEmpty()||!java.util.Set.of("PUBLISHED","EXPIRED").contains(invitation.get(0).get("status")))
             throw new IllegalArgumentException("Only published or expired invitations can be extended");
-        int days=settings.getInt("invitation.expiry.extension-days");long amount=settings.getLong("invitation.expiry.extension-price-minor");
-        if(days<=0||amount<0)throw new IllegalStateException("Configured extension policy is invalid");
+        int days=settings.getInt("invitation.expiry.extension-days");long baseAmount=settings.getLong("invitation.expiry.extension-price-minor");
+        BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
+        if(days<=0||baseAmount<0||taxPercent.compareTo(BigDecimal.ZERO)<0||taxPercent.compareTo(new BigDecimal("100"))>0)throw new IllegalStateException("Configured extension pricing is invalid");
+        long taxAmount=BigDecimal.valueOf(baseAmount).multiply(taxPercent).divide(new BigDecimal("100"),0,RoundingMode.HALF_UP).longValueExact();
+        long amount=Math.addExact(baseAmount,taxAmount);
         String currency=settings.getString("pricing.currency");UUID orderId=UUID.randomUUID();
         String orderNumber="DI-EXT-"+UUID.randomUUID().toString().replace("-","").substring(0,16).toUpperCase();
         String snapshot;
-        try{snapshot=mapper.writeValueAsString(Map.of("amountMinor",amount,"currency",currency,"extensionDays",days,"publicationId",invitation.get(0).get("publicationId")));}
+        try{snapshot=mapper.writeValueAsString(Map.of("baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"baseAmountMinor",baseAmount,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"extensionDays",days,"publicationId",invitation.get(0).get("publicationId")));}
         catch(Exception e){throw new IllegalStateException("Unable to snapshot extension terms");}
         jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,order_type,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,?, 'CREATED',?::jsonb)",
             orderId,user,id,orderNumber,"EXTENSION",currency,amount,snapshot);
