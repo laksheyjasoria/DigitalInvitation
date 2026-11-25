@@ -50,7 +50,8 @@ public class PaymentController {
         return ApiResponse.success(Map.of("provider",provider.name(),"keyId",provider.publicKey(),"providerOrder",result));
     }
     public record VerifyRequest(String providerOrderId,String providerPaymentId,String signature){}
-    @org.springframework.transaction.annotation.Transactional\n    @PostMapping("/payments/{orderId}/verify")
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/payments/{orderId}/verify")
     public ApiResponse<?> verify(@PathVariable UUID orderId,@RequestBody VerifyRequest r,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
         var order=jdbc.query("SELECT amount_minor,currency,status FROM customer_order WHERE id=? AND user_id=?",
@@ -68,7 +69,8 @@ public class PaymentController {
         jdbc.update("UPDATE invitation SET status='READY_TO_PUBLISH',updated_at=now() WHERE id=(SELECT invitation_id FROM customer_order WHERE id=?) AND status='PENDING_PAYMENT'",orderId);
         return ApiResponse.success(Map.of("orderId",orderId,"status","PAID"));
     }
-    @org.springframework.transaction.annotation.Transactional\n    @PostMapping("/webhooks/razorpay")
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/webhooks/razorpay")
     public ApiResponse<?> webhook(@RequestHeader("X-Razorpay-Signature")String signature,@RequestBody String body){
         if(provider==null||!provider.name().equals("RAZORPAY")||!provider.verifyWebhookSignature(body,signature))
             throw new IllegalArgumentException("Invalid webhook signature");
@@ -94,4 +96,5 @@ public class PaymentController {
             jdbc.update("UPDATE payment_webhook_event SET processing_status='PROCESSED',processed_at=now() WHERE provider='RAZORPAY' AND provider_event_id=?",eventId);
         }catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid webhook payload");}
         return ApiResponse.success(Map.of("received",true));
-    }\n}
+    }
+}
