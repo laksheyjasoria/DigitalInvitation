@@ -30,7 +30,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatusCode())
                 .body(ApiResponse.failure("RESOURCE_UNAVAILABLE", ex.getReason() == null ? "Requested resource is unavailable" : ex.getReason()));
     }
-\n    @ExceptionHandler(Exception.class)
+
+    @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> unexpected(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("INTERNAL_ERROR", "An unexpected error occurred"));
