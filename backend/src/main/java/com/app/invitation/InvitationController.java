@@ -99,9 +99,9 @@ public class InvitationController {
                 String orderTimezone=policy.path("timezone").asText("");
                 if(!orderDate.equals(agreedDate)||!orderTimezone.equals(agreedTimezone))
                     throw new IllegalStateException("Invitation event date or timezone differs from the accepted order snapshot");
-                snapshot.path("requiredConsents").forEach(node->requiredConsentKeys.add(node.asText()));
-                var consentNode=snapshot.path("consentVersions");
-                consentNode.fields().forEachRemaining(entry->consentVersions.put(entry.getKey(),entry.getValue().asText()));
+                for(var node:snapshot.path("requiredConsents"))requiredConsentKeys.add(node.asText());
+                var consentFields=snapshot.path("consentVersions").fields();
+                while(consentFields.hasNext()){var entry=consentFields.next();consentVersions.put(entry.getKey(),entry.getValue().asText());}
             }catch(IllegalStateException e){throw e;}catch(Exception e){throw new IllegalStateException("Unable to read the agreed order policy snapshot",e);}
         }else{
             grace=settings.getInt("invitation.expiry.grace-days");
