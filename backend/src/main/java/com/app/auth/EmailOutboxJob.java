@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name="app.mail.enabled",havingValue="true")
 public class EmailOutboxJob {
  private final JdbcTemplate jdbc;private final ObjectProvider<JavaMailSender> senderProvider;private final ObjectMapper mapper;private final String from;
  public EmailOutboxJob(JdbcTemplate jdbc,ObjectProvider<JavaMailSender> senderProvider,ObjectMapper mapper,
