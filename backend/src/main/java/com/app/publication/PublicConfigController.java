@@ -15,6 +15,7 @@ public class PublicConfigController {
    "previewEnabled",settings.getBoolean("invitation.preview.enabled"),
    "customSectionsEnabled",settings.getBoolean("invitation.custom-sections.enabled"),
    "rsvpEnabled",settings.getBoolean("invitation.rsvp.enabled"),
+   "extensionEnabled",settings.getBoolean("invitation.expiry.extension-enabled"),
    "supportedLocales",settings.getStringList("invitation.supported-locales"),
    "defaultTimezone",settings.getString("invitation.default-timezone")));
  }
