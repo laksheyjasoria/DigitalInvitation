@@ -42,19 +42,40 @@ public class PaymentController {
     @PostMapping("/payments/{orderId}/verify")
     public ApiResponse<?> verify(@PathVariable UUID orderId,@RequestBody VerifyRequest r,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
-        if(!provider.verifyCheckoutSignature(r.providerOrderId(),r.providerPaymentId(),r.signature()))throw new IllegalArgumentException("Payment signature verification failed");
-        int changed=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE order_id=? AND provider=? AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED') AND EXISTS (SELECT 1 FROM customer_order o WHERE o.id=payment_transaction.order_id AND o.user_id=?)",r.providerPaymentId(),orderId,provider.name(),r.providerOrderId(),UUID.fromString(auth.getName()));
+        var order=jdbc.query("SELECT amount_minor,currency FROM customer_order WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING')",
+            (rs,n)->Map.of("amount",rs.getLong("amount_minor"),"currency",rs.getString("currency")),orderId,UUID.fromString(auth.getName()));
+        if(order.isEmpty())throw new IllegalArgumentException("Order not found or already processed");
+        long amount=((Number)order.get(0).get("amount")).longValue();String currency=(String)order.get(0).get("currency");
+        if(!provider.verifyCheckoutSignature(r.providerOrderId(),r.providerPaymentId(),r.signature()) ||
+           !provider.verifyPaymentDetails(r.providerPaymentId(),r.providerOrderId(),amount,currency))
+            throw new IllegalArgumentException("Payment could not be verified as captured for this order");
+        int changed=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE order_id=? AND provider=? AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED') AND EXISTS (SELECT 1 FROM customer_order o WHERE o.id=payment_transaction.order_id AND o.user_id=?)",
+            r.providerPaymentId(),orderId,provider.name(),r.providerOrderId(),UUID.fromString(auth.getName()));
         if(changed==0)throw new IllegalArgumentException("Payment transaction not found or already processed");
         jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=? AND user_id=?",orderId,UUID.fromString(auth.getName()));
         return ApiResponse.success(Map.of("orderId",orderId,"status","PAID"));
     }
     @PostMapping("/webhooks/razorpay")
     public ApiResponse<?> webhook(@RequestHeader("X-Razorpay-Signature")String signature,@RequestBody String body){
-        if(provider==null||!provider.name().equals("RAZORPAY")||!provider.verifyWebhookSignature(body,signature))throw new IllegalArgumentException("Invalid webhook signature");
+        if(provider==null||!provider.name().equals("RAZORPAY")||!provider.verifyWebhookSignature(body,signature))
+            throw new IllegalArgumentException("Invalid webhook signature");
         try{
             var root=mapper.readTree(body);String eventId=root.path("id").asText();String eventType=root.path("event").asText();
-            jdbc.update("INSERT INTO payment_webhook_event(provider,provider_event_id,event_type,payload,processing_status) VALUES ('RAZORPAY',?,?,?::jsonb,'RECEIVED') ON CONFLICT(provider,provider_event_id) DO NOTHING",eventId,eventType,body);
-        }catch(Exception e){throw new IllegalArgumentException("Invalid webhook payload");}
+            if(eventId.isBlank())throw new IllegalArgumentException("Webhook event id is required");
+            int inserted=jdbc.update("INSERT INTO payment_webhook_event(provider,provider_event_id,event_type,payload,processing_status) VALUES ('RAZORPAY',?,?,?::jsonb,'RECEIVED') ON CONFLICT(provider,provider_event_id) DO NOTHING",eventId,eventType,body);
+            if(inserted==0)return ApiResponse.success(Map.of("received",true,"duplicate",true));
+            var payment=root.path("payload").path("payment").path("entity");
+            String paymentId=payment.path("id").asText();String gatewayOrderId=payment.path("order_id").asText();
+            if(eventType.equals("payment.captured")||eventType.equals("order.paid")){
+                if(paymentId.isBlank()||gatewayOrderId.isBlank())throw new IllegalArgumentException("Captured payment event is incomplete");
+                int updated=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND amount_minor=? AND currency=? AND status IN ('INITIATED','AUTHORIZED')",
+                    paymentId,gatewayOrderId,payment.path("amount").asLong(),payment.path("currency").asText());
+                if(updated==1)jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?)",gatewayOrderId);
+            }else if(eventType.equals("payment.failed")){
+                jdbc.update("UPDATE payment_transaction SET status='FAILED',updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND status='INITIATED'",gatewayOrderId);
+                jdbc.update("UPDATE customer_order SET status='FAILED',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?) AND status<>'PAID'",gatewayOrderId);
+            }
+            jdbc.update("UPDATE payment_webhook_event SET processing_status='PROCESSED',processed_at=now() WHERE provider='RAZORPAY' AND provider_event_id=?",eventId);
+        }catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid webhook payload");}
         return ApiResponse.success(Map.of("received",true));
-    }
-}
+    }}
