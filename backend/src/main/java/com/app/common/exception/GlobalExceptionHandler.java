@@ -24,7 +24,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> badRequest(IllegalArgumentException ex) {
         return ResponseEntity.badRequest().body(ApiResponse.failure("BAD_REQUEST", ex.getMessage()));
     }
-    @ExceptionHandler(Exception.class)
+
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> responseStatus(org.springframework.web.server.ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiResponse.failure("RESOURCE_UNAVAILABLE", ex.getReason() == null ? "Requested resource is unavailable" : ex.getReason()));
+    }
+\n    @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> unexpected(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("INTERNAL_ERROR", "An unexpected error occurred"));
