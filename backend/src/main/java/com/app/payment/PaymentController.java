@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1")
 public class PaymentController {
-    private final JdbcTemplate jdbc;private final PaymentProvider provider;private final ObjectMapper mapper;private final com.app.config.SystemSettingService settings;
-    public PaymentController(JdbcTemplate jdbc,ObjectProvider<PaymentProvider> provider,ObjectMapper mapper,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.provider=provider.getIfAvailable();this.mapper=mapper;this.settings=settings;}
+    private final JdbcTemplate jdbc;private final PaymentProvider provider;private final ObjectMapper mapper;private final com.app.config.SystemSettingService settings;private final PaymentSettlementService settlement;
+    public PaymentController(JdbcTemplate jdbc,ObjectProvider<PaymentProvider> provider,ObjectMapper mapper,com.app.config.SystemSettingService settings,PaymentSettlementService settlement){this.jdbc=jdbc;this.provider=provider.getIfAvailable();this.mapper=mapper;this.settings=settings;this.settlement=settlement;}
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/orders")
     @ResponseStatus(HttpStatus.CREATED)
@@ -36,6 +36,28 @@ public class PaymentController {
         jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,'CREATED',?::jsonb)",orderId,user,id,orderNumber,currency,amount,pricingSnapshot);
         jdbc.update("UPDATE invitation SET status='PENDING_PAYMENT',updated_at=now() WHERE id=? AND owner_user_id=?",id,user);
         return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"amountMinor",amount,"currency",currency));
+    }
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/invitations/{id}/extensions/orders")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<?> createExtensionOrder(@PathVariable UUID id,Authentication auth){
+        if(!settings.getBoolean("invitation.expiry.extension-enabled"))
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Invitation extensions are not available");
+        UUID user=UUID.fromString(auth.getName());
+        var invitation=jdbc.query("SELECT i.status,p.id publication_id FROM invitation i JOIN LATERAL (SELECT id FROM invitation_publication WHERE invitation_id=i.id ORDER BY published_at DESC LIMIT 1) p ON true WHERE i.id=? AND i.owner_user_id=?",
+            (rs,n)->Map.of("status",rs.getString("status"),"publicationId",rs.getObject("publication_id",UUID.class)),id,user);
+        if(invitation.isEmpty()||!java.util.Set.of("PUBLISHED","EXPIRED").contains(invitation.get(0).get("status")))
+            throw new IllegalArgumentException("Only published or expired invitations can be extended");
+        int days=settings.getInt("invitation.expiry.extension-days");long amount=settings.getLong("invitation.expiry.extension-price-minor");
+        if(days<=0||amount<0)throw new IllegalStateException("Configured extension policy is invalid");
+        String currency=settings.getString("pricing.currency");UUID orderId=UUID.randomUUID();
+        String orderNumber="DI-EXT-"+UUID.randomUUID().toString().replace("-","").substring(0,16).toUpperCase();
+        String snapshot;
+        try{snapshot=mapper.writeValueAsString(Map.of("amountMinor",amount,"currency",currency,"extensionDays",days,"publicationId",invitation.get(0).get("publicationId")));}
+        catch(Exception e){throw new IllegalStateException("Unable to snapshot extension terms");}
+        jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,order_type,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,?, 'CREATED',?::jsonb)",
+            orderId,user,id,orderNumber,"EXTENSION",currency,amount,snapshot);
+        return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"amountMinor",amount,"currency",currency,"extensionDays",days));
     }
     @PostMapping("/payments/{orderId}/checkout")
     public ApiResponse<?> checkout(@PathVariable UUID orderId,Authentication auth){
@@ -65,8 +87,7 @@ public class PaymentController {
         int changed=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE order_id=? AND provider=? AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED') AND EXISTS (SELECT 1 FROM customer_order o WHERE o.id=payment_transaction.order_id AND o.user_id=?)",
             r.providerPaymentId(),orderId,provider.name(),r.providerOrderId(),UUID.fromString(auth.getName()));
         if(changed==0)throw new IllegalArgumentException("Payment transaction not found or already processed");
-        jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=? AND user_id=?",orderId,UUID.fromString(auth.getName()));
-        jdbc.update("UPDATE invitation SET status='READY_TO_PUBLISH',updated_at=now() WHERE id=(SELECT invitation_id FROM customer_order WHERE id=?) AND status='PENDING_PAYMENT'",orderId);
+        settlement.settle(orderId,provider.name(),r.providerPaymentId());
         return ApiResponse.success(Map.of("orderId",orderId,"status","PAID"));
     }
     @org.springframework.transaction.annotation.Transactional
@@ -86,8 +107,8 @@ public class PaymentController {
                 int updated=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND amount_minor=? AND currency=? AND status IN ('INITIATED','AUTHORIZED')",
                     paymentId,gatewayOrderId,payment.path("amount").asLong(),payment.path("currency").asText());
                 if(updated==1){
-                    jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?)",gatewayOrderId);
-                    jdbc.update("UPDATE invitation SET status='READY_TO_PUBLISH',updated_at=now() WHERE id=(SELECT invitation_id FROM customer_order WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?)) AND status='PENDING_PAYMENT'",gatewayOrderId);
+                    UUID paidOrderId=jdbc.queryForObject("SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?",UUID.class,gatewayOrderId);
+                    settlement.settle(paidOrderId,provider.name(),paymentId);
                 }
             }else if(eventType.equals("payment.failed")){
                 jdbc.update("UPDATE payment_transaction SET status='FAILED',updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND status='INITIATED'",gatewayOrderId);
