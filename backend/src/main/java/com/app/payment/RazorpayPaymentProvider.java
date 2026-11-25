@@ -22,6 +22,7 @@ public class RazorpayPaymentProvider implements PaymentProvider {
         this.client=RestClient.builder().baseUrl("https://api.razorpay.com/v1").defaultHeaders(h->h.setBasicAuth(keyId,keySecret)).build();
     }
     public String name(){return "RAZORPAY";}
+    public String publicKey(){return keyId;}
     public Map<String,Object> createOrder(long amountMinor,String currency,String receipt){
         return client.post().uri("/orders").body(Map.of("amount",amountMinor,"currency",currency,"receipt",receipt,"payment_capture",1)).retrieve().body(Map.class);
     }
