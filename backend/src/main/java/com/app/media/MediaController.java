@@ -59,7 +59,7 @@ public class MediaController {
   if(b.length>=12&&new String(b,0,4,java.nio.charset.StandardCharsets.US_ASCII).equals("RIFF")&&new String(b,8,4,java.nio.charset.StandardCharsets.US_ASCII).equals("WEBP"))return "image/webp";
   return null;
  }
- private ResponseEntity<StreamingResponseBody> stream(Map<String,Object> row){
+ private ResponseEntity<StreamingResponseBody> stream(Map<String,?> row){
   StreamingResponseBody body=out->{try(var in=storage.download((String)row.get("key"))){in.transferTo(out);}};
   return ResponseEntity.ok().contentType(MediaType.parseMediaType((String)row.get("type")))
    .header(HttpHeaders.CONTENT_DISPOSITION,"inline")
