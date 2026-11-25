@@ -3,12 +3,15 @@
 This implementation is an integration milestone. Do not accept live customers until every applicable gate is completed and signed off.
 
 ## Code and automated verification
-- [ ] Maven verify passes on Java 21.
-- [ ] Add PostgreSQL integration tests for every Flyway migration and all repository queries.
+- [ ] Latest-head Maven verify and PostgreSQL migration smoke test pass on Java 21 (CI currently being rerun after correcting the INR JSON seed).
+- [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
+- [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
 - [ ] Add tests for auth token expiry, replay, brute-force limits, suspended accounts and password reset.
 - [ ] Add cross-user IDOR tests for every invitation, order, media and payment endpoint.
-- [ ] Add payment tests for bad signatures, wrong amount/currency/order, duplicate webhook, replay, late webhook and refund.
-- [ ] Add lifecycle tests for timezones, leap days, DST, midnight boundaries, last-function date, grace=0 and grace changes after purchase.
+- [x] Add unit tests for valid/tampered Razorpay checkout signatures and exact raw-body webhook signatures.
+- [ ] Add payment tests for wrong amount/currency/order, duplicate webhook, replay, late webhook, concurrent checkout and refund.
+- [x] Add expiry calculation tests for zero grace, seven calendar days, timezone conversion and a DST transition.
+- [ ] Add lifecycle tests for leap days, midnight boundaries, last-function date changes and purchase-time configuration snapshots.
 - [ ] Add tests for policy version changes and consent invalidation after content changes.
 - [ ] Add upload malware/content scanning, decompression bomb limits, image dimension limits and storage cleanup tests.
 - [ ] Run SAST, dependency, container and secret scans; perform independent penetration testing.
@@ -34,9 +37,9 @@ This implementation is an integration milestone. Do not accept live customers un
 - No refresh-token rotation/revocation or login rate limiting yet.
 - Email outbox sends verification/reset messages when SMTP is enabled, but bounce/dead-letter operations need admin tooling.
 - FileServer adapter paths are configurable but not verified against the deployed upload/delete contract.
-- Razorpay is the first concrete payment adapter; other providers and provider selection are not implemented.
-- Configurable percentage tax and extension purchases are implemented in the current branch; coupons, refund administration and payment reconciliation UI are not complete.
-- Basic configurable RSVP capture and owner response listing are implemented; attendee management, invitation analytics and full calendar/localization rendering remain.
+- Razorpay is the first concrete payment adapter; other providers and provider selection are not implemented. Checkout retry/idempotency and captured-payment settlement are implemented but still require provider sandbox and concurrency tests.
+- Configurable percentage tax, extension orders/settlement and purchase-time pricing/expiry snapshots are implemented in the current branch; coupons, invoice generation, refund administration and payment reconciliation UI are not complete.
+- Basic configurable RSVP capture and owner-only response listing are implemented; RSVP rate limiting/spam controls, attendee management, invitation analytics and full calendar/localization rendering remain.
 - Admin dashboard is a first control surface; full user/support/role management, admin MFA and audit search UI remain.
 - UI end-to-end, accessibility, browser, mobile, load and security testing remain.
 
