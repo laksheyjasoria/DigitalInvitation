@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/invitations")
 public class InvitationController {
-    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;private final com.app.config.SystemSettingService settings;
-    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;this.settings=settings;}
+    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;private final com.app.config.SystemSettingService settings;private final com.app.audit.AuditLogService audit;
+    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl,com.app.config.SystemSettingService settings,com.app.audit.AuditLogService audit){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;this.settings=settings;this.audit=audit;}
     public record CreateRequest(@NotNull UUID templateVersionId,@NotBlank String title,Map<String,Object> content,LocalDate lastFunctionDate,String timezone){}
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody CreateRequest r,Authentication auth){
@@ -59,6 +59,7 @@ public class InvitationController {
         }
         return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
     }
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/{id}/publish") public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
         var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,o.status order_status FROM invitation i LEFT JOIN LATERAL (SELECT status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=?",(rs,n)->Map.of("title",rs.getString("title"),"content",rs.getString("content"),"lastFunctionDate",rs.getDate("last_function_date")==null?"":rs.getDate("last_function_date").toLocalDate().toString(),"timezone",rs.getString("timezone"),"templateVersionId",rs.getObject("template_version_id"),"version",rs.getLong("version"),"orderStatus",rs.getString("order_status")==null?"":rs.getString("order_status")),id,user);
@@ -76,6 +77,7 @@ public class InvitationController {
             jdbc.update("INSERT INTO invitation_publication(invitation_id,publication_number,public_slug,published_snapshot,template_version_id,expires_at) VALUES (?,COALESCE((SELECT max(publication_number)+1 FROM invitation_publication WHERE invitation_id=?),1),?,jsonb_build_object('title',?,'content',?::jsonb),?,?)",id,id,slug,inv.get("title"),inv.get("content"),inv.get("templateVersionId"),java.sql.Timestamp.from(expiry));
             jdbc.update("UPDATE invitation SET status='PUBLISHED',public_slug=?,expires_at=?,updated_at=now() WHERE id=? AND owner_user_id=?",slug,java.sql.Timestamp.from(expiry),id,user);
         }catch(Exception e){throw new IllegalArgumentException("Unable to publish invitation");}
+        audit.record(user,"INVITATION_PUBLISHED","INVITATION",id.toString(),"SUCCESS",Map.of("publicationSlug",slug,"expiresAt",expiry.toString(),"graceDays",grace));
         return ApiResponse.success(Map.of("slug",slug,"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+slug,"expiresAt",expiry.toString()));
     }
 }
