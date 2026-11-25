@@ -36,14 +36,14 @@ public class PaymentController {
         String gatewayId=String.valueOf(result.get("id"));
         jdbc.update("INSERT INTO payment_transaction(order_id,provider,provider_order_id,status,amount_minor,currency) VALUES (?, ?, ?,'INITIATED',?,?)",orderId,provider.name(),gatewayId,o.get("amount"),o.get("currency"));
         jdbc.update("UPDATE customer_order SET status='PAYMENT_PENDING',updated_at=now() WHERE id=?",orderId);
-        return ApiResponse.success(Map.of("provider",provider.name(),"providerOrder",result));
+        return ApiResponse.success(Map.of("provider",provider.name(),"keyId",provider.publicKey(),"providerOrder",result));
     }
     public record VerifyRequest(String providerOrderId,String providerPaymentId,String signature){}
     @PostMapping("/payments/{orderId}/verify")
     public ApiResponse<?> verify(@PathVariable UUID orderId,@RequestBody VerifyRequest r,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
         if(!provider.verifyCheckoutSignature(r.providerOrderId(),r.providerPaymentId(),r.signature()))throw new IllegalArgumentException("Payment signature verification failed");
-        int changed=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE order_id=? AND provider=? AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED')",r.providerPaymentId(),orderId,provider.name(),r.providerOrderId());
+        int changed=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE order_id=? AND provider=? AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED') AND EXISTS (SELECT 1 FROM customer_order o WHERE o.id=payment_transaction.order_id AND o.user_id=?)",r.providerPaymentId(),orderId,provider.name(),r.providerOrderId(),UUID.fromString(auth.getName()));
         if(changed==0)throw new IllegalArgumentException("Payment transaction not found or already processed");
         jdbc.update("UPDATE customer_order SET status='PAID',updated_at=now() WHERE id=? AND user_id=?",orderId,UUID.fromString(auth.getName()));
         return ApiResponse.success(Map.of("orderId",orderId,"status","PAID"));
