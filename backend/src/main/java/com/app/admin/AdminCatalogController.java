@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin")
 public class AdminCatalogController {
-    private final JdbcTemplate jdbc;private final ObjectMapper mapper;
-    public AdminCatalogController(JdbcTemplate jdbc,ObjectMapper mapper){this.jdbc=jdbc;this.mapper=mapper;}
+    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final com.app.audit.AuditLogService audit;
+    public AdminCatalogController(JdbcTemplate jdbc,ObjectMapper mapper,com.app.audit.AuditLogService audit){this.jdbc=jdbc;this.mapper=mapper;this.audit=audit;}
     @PostMapping("/categories") public ApiResponse<?> createCategory(@RequestBody Map<String,String> b){
         String key=b.getOrDefault("key","").trim().toUpperCase(),name=b.getOrDefault("name","").trim();
         if(!key.matches("[A-Z0-9_-]{2,80}")||name.isBlank()||name.length()>120)throw new IllegalArgumentException("Valid category key and name are required");
@@ -26,6 +26,7 @@ public class AdminCatalogController {
         try{jdbc.update("INSERT INTO invitation_template(id,category_id,template_key,display_name,description,status,current_version) VALUES (?,?,?,?,?,'PUBLISHED',1)",id,category,key,name,b.get("description"));
             jdbc.update("INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by) VALUES (?,?,1,?::jsonb,?)",version,id,mapper.writeValueAsString(definition),UUID.fromString(auth.getName()));
         }catch(Exception e){throw new IllegalArgumentException("Unable to create template");}
+        audit.record(UUID.fromString(auth.getName()),"TEMPLATE_CREATED","TEMPLATE",id.toString(),"SUCCESS",Map.of("key",key));
         return ApiResponse.success(Map.of("id",id,"versionId",version));
     }
     @PostMapping("/templates/{id}/versions") public ApiResponse<?> addVersion(@PathVariable UUID id,@RequestBody Map<String,Object> b,Authentication auth){
