@@ -37,12 +37,23 @@ public class InvitationController {
         catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid invitation content");}
         return ApiResponse.success(Map.of("id",id,"status","DRAFT"));
     }
-    @PostMapping("/{id}/consents") public ApiResponse<?> consent(@PathVariable UUID id,@RequestBody Map<String,Boolean> consents,Authentication auth){
-        UUID user=UUID.fromString(auth.getName());var rows=jdbc.queryForList("SELECT version FROM invitation WHERE id=? AND owner_user_id=?",id,user);if(rows.isEmpty())throw new IllegalArgumentException("Invitation not found");
-        if(consents.isEmpty()||consents.values().stream().anyMatch(v->!Boolean.TRUE.equals(v)))throw new IllegalArgumentException("All required declarations must be accepted");
-        long version=((Number)rows.get(0).get("version")).longValue();
-        for(var e:consents.entrySet())jdbc.update("INSERT INTO invitation_consent(user_id,invitation_id,consent_key,consent_version,accepted,content_version) VALUES (?,?,?,?,true,?) ON CONFLICT DO NOTHING",user,id,e.getKey(),"1",version);
-        return ApiResponse.success(Map.of("accepted",consents.size(),"contentVersion",version));
+    @PostMapping("/{id}/consents")
+    public ApiResponse<?> consent(@PathVariable UUID id,@RequestBody Map<String,Boolean> consents,Authentication auth,
+                                  jakarta.servlet.http.HttpServletRequest request){
+        UUID user=UUID.fromString(auth.getName());
+        var invitation=jdbc.queryForList("SELECT version FROM invitation WHERE id=? AND owner_user_id=?",id,user);
+        if(invitation.isEmpty())throw new IllegalArgumentException("Invitation not found");
+        var required=jdbc.query("SELECT substring(setting_key from 17) AS consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",
+            (rs,n)->rs.getString("consent_key"));
+        if(required.isEmpty()||!consents.keySet().equals(new java.util.HashSet<>(required))||
+           consents.values().stream().anyMatch(v->!Boolean.TRUE.equals(v)))
+            throw new IllegalArgumentException("All and only the current required declarations must be accepted");
+        long version=((Number)invitation.get(0).get("version")).longValue();
+        String ip=request.getRemoteAddr();
+        String agent=request.getHeader("User-Agent");
+        for(String key:required)jdbc.update("INSERT INTO invitation_consent(user_id,invitation_id,consent_key,consent_version,accepted,source_ip,user_agent,content_version) VALUES (?,?,?,'1',true,?,?,?) ON CONFLICT (invitation_id,content_version,consent_key,consent_version) DO UPDATE SET accepted=true,accepted_at=now(),source_ip=EXCLUDED.source_ip,user_agent=EXCLUDED.user_agent",
+            user,id,key,ip,agent==null?null:agent.substring(0,Math.min(agent.length(),500)),version);
+        return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
     }
     @PostMapping("/{id}/publish") public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
