@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/invitations")
 public class InvitationController {
-    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;private final com.app.config.SystemSettingService settings;private final com.app.audit.AuditLogService audit;
-    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl,com.app.config.SystemSettingService settings,com.app.audit.AuditLogService audit){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;this.settings=settings;this.audit=audit;}
+    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;private final com.app.config.SystemSettingService settings;private final com.app.audit.AuditLogService audit;private final InvitationExpiryCalculator expiryCalculator;
+    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl,com.app.config.SystemSettingService settings,com.app.audit.AuditLogService audit,InvitationExpiryCalculator expiryCalculator){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;this.settings=settings;this.audit=audit;this.expiryCalculator=expiryCalculator;}
     public record CreateRequest(@NotNull UUID templateVersionId,@NotBlank String title,Map<String,Object> content,LocalDate lastFunctionDate,String timezone){}
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody CreateRequest r,Authentication auth){
@@ -133,7 +133,7 @@ public class InvitationController {
         if(paymentRequired&&!"PAID".equals(inv.get("orderStatus")))throw new IllegalArgumentException("A verified paid order is required before publication");
         if(grace<0||grace>365)throw new IllegalStateException("Agreed expiry grace period is invalid");
         ZoneId zone=ZoneId.of(agreedTimezone);
-        var expiry=LocalDate.parse(agreedDate).plusDays(grace+1L).atStartOfDay(zone).toInstant();
+        var expiry=expiryCalculator.calculate(LocalDate.parse(agreedDate),grace,zone);
         byte[] bytes=new byte[24];random.nextBytes(bytes);String slug=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         try{
             String expirySnapshot=mapper.writeValueAsString(Map.of("graceDays",grace,"lastFunctionDate",agreedDate,"timezone",agreedTimezone,"expiresAt",expiry.toString(),"settingVersion",expirySettingVersion));
