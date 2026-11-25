@@ -62,11 +62,11 @@ public class PaymentController {
         String currency=settings.getString("pricing.currency");UUID orderId=UUID.randomUUID();
         String orderNumber="DI-EXT-"+UUID.randomUUID().toString().replace("-","").substring(0,16).toUpperCase();
         String snapshot;
-        try{snapshot=mapper.writeValueAsString(Map.of("baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"baseAmountMinor",baseAmount,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"extensionDays",days,"publicationId",invitation.get(0).get("publicationId")));}
+        try{snapshot=mapper.writeValueAsString(Map.of("baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"extensionDays",days,"publicationId",invitation.get(0).get("publicationId")));}
         catch(Exception e){throw new IllegalStateException("Unable to snapshot extension terms");}
         jdbc.update("INSERT INTO customer_order(id,user_id,invitation_id,order_number,order_type,currency,amount_minor,status,pricing_snapshot) VALUES (?,?,?,?,?,?,?, 'CREATED',?::jsonb)",
             orderId,user,id,orderNumber,"EXTENSION",currency,amount,snapshot);
-        return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"amountMinor",amount,"currency",currency,"extensionDays",days));
+        return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"baseAmountMinor",baseAmount,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency,"extensionDays",days));
     }
     @PostMapping("/payments/{orderId}/checkout")
     public ApiResponse<?> checkout(@PathVariable UUID orderId,Authentication auth){
