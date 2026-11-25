@@ -51,8 +51,12 @@ public class InvitationController {
         long version=((Number)invitation.get(0).get("version")).longValue();
         String ip=request.getRemoteAddr();
         String agent=request.getHeader("User-Agent");
-        for(String key:required)jdbc.update("INSERT INTO invitation_consent(user_id,invitation_id,consent_key,consent_version,accepted,source_ip,user_agent,content_version) VALUES (?,?,?,'1',true,?,?,?) ON CONFLICT (invitation_id,content_version,consent_key,consent_version) DO UPDATE SET accepted=true,accepted_at=now(),source_ip=EXCLUDED.source_ip,user_agent=EXCLUDED.user_agent",
-            user,id,key,ip,agent==null?null:agent.substring(0,Math.min(agent.length(),500)),version);
+        for(String key:required){
+            String policyType=key.equals("terms")?"TERMS":key.equals("privacy")?"PRIVACY":null;
+            String consentVersion=policyType==null?"1":String.valueOf(jdbc.queryForObject("SELECT max(version_number) FROM policy_document WHERE policy_type=? AND status='PUBLISHED'",Integer.class,policyType));
+            jdbc.update("INSERT INTO invitation_consent(user_id,invitation_id,consent_key,consent_version,accepted,source_ip,user_agent,content_version) VALUES (?,?,?,?,true,?,?,?) ON CONFLICT (invitation_id,content_version,consent_key,consent_version) DO UPDATE SET accepted=true,accepted_at=now(),source_ip=EXCLUDED.source_ip,user_agent=EXCLUDED.user_agent",
+                user,id,key,consentVersion,ip,agent==null?null:agent.substring(0,Math.min(agent.length(),500)),version);
+        }
         return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
     }
     @PostMapping("/{id}/publish") public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
