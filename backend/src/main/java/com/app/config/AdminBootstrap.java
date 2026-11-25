@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@org.springframework.context.annotation.Profile("!test")
 public class AdminBootstrap implements ApplicationRunner {
  private final JdbcTemplate jdbc;private final PasswordEncoder encoder;
  @Value("${app.bootstrap.admin.email:}") private String email;
