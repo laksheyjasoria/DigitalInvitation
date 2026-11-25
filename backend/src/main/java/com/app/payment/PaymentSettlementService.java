@@ -27,10 +27,11 @@ public class PaymentSettlementService {
    try{
     var snapshot=mapper.readTree((String)order.get("snapshot"));int days=snapshot.path("extensionDays").asInt(0);
     if(days<=0)throw new IllegalStateException("Extension order has invalid duration");
-    var publications=jdbc.query("SELECT id,expires_at FROM invitation_publication WHERE invitation_id=? ORDER BY published_at DESC LIMIT 1",
+    var publications=jdbc.query("SELECT id,expires_at,revoked_at FROM invitation_publication WHERE invitation_id=? ORDER BY published_at DESC LIMIT 1",
      (rs,n)->Map.of("id",rs.getObject("id",UUID.class),"expiresAt",rs.getTimestamp("expires_at").toInstant()),invitationId);
     if(publications.isEmpty())throw new IllegalStateException("No invitation publication exists to extend");
     UUID publicationId=(UUID)publications.get(0).get("id");var previous=(java.time.Instant)publications.get(0).get("expiresAt");
+    if(jdbc.queryForObject("SELECT revoked_at IS NOT NULL FROM invitation_publication WHERE id=?",Boolean.class,publicationId))throw new IllegalStateException("Revoked invitations cannot be extended");
     jdbc.update("UPDATE invitation_publication SET expires_at=GREATEST(expires_at,now())+(? * interval '1 day') WHERE id=?",days,publicationId);
     var next=jdbc.queryForObject("SELECT expires_at FROM invitation_publication WHERE id=?",java.sql.Timestamp.class,publicationId).toInstant();
     jdbc.update("UPDATE invitation SET status='PUBLISHED',expires_at=?,updated_at=now() WHERE id=?",java.sql.Timestamp.from(next),invitationId);
