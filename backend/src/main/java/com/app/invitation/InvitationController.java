@@ -60,24 +60,64 @@ public class InvitationController {
         return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
     }
     @org.springframework.transaction.annotation.Transactional
-    @PostMapping("/{id}/publish") public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/{id}/publish")
+    public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
-        var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,o.status order_status FROM invitation i LEFT JOIN LATERAL (SELECT status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=?",(rs,n)->Map.of("title",rs.getString("title"),"content",rs.getString("content"),"lastFunctionDate",rs.getDate("last_function_date")==null?"":rs.getDate("last_function_date").toLocalDate().toString(),"timezone",rs.getString("timezone"),"templateVersionId",rs.getObject("template_version_id"),"version",rs.getLong("version"),"orderStatus",rs.getString("order_status")==null?"":rs.getString("order_status")),id,user);
-        if(rows.isEmpty())throw new IllegalArgumentException("Invitation not found");var inv=rows.get(0);
-        if(settings.getBoolean("invitation.publication.payment-required")&&!"PAID".equals(inv.get("orderStatus")))throw new IllegalArgumentException("A verified paid order is required before publication");
+        var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,i.status,i.public_slug,i.expires_at,o.status order_status,o.pricing_snapshot::text order_snapshot FROM invitation i LEFT JOIN LATERAL (SELECT status,pricing_snapshot FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=?",
+            (rs,n)->{
+                Map<String,Object> m=new java.util.HashMap<>();
+                m.put("title",rs.getString("title"));m.put("content",rs.getString("content"));
+                m.put("lastFunctionDate",rs.getDate("last_function_date")==null?"":rs.getDate("last_function_date").toLocalDate().toString());
+                m.put("timezone",rs.getString("timezone"));m.put("templateVersionId",rs.getObject("template_version_id"));
+                m.put("version",rs.getLong("version"));m.put("status",rs.getString("status"));
+                m.put("publicSlug",rs.getString("public_slug")==null?"":rs.getString("public_slug"));
+                m.put("orderStatus",rs.getString("order_status")==null?"":rs.getString("order_status"));
+                m.put("orderSnapshot",rs.getString("order_snapshot")==null?"":rs.getString("order_snapshot"));
+                m.put("expiresAt",rs.getTimestamp("expires_at")==null?"":rs.getTimestamp("expires_at").toInstant().toString());
+                return m;
+            },id,user);
+        if(rows.isEmpty())throw new IllegalArgumentException("Invitation not found");
+        var inv=rows.get(0);
+        if("PUBLISHED".equals(inv.get("status"))&&!inv.get("publicSlug").toString().isBlank())
+            return ApiResponse.success(Map.of("slug",inv.get("publicSlug"),"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+inv.get("publicSlug"),"expiresAt",inv.get("expiresAt")));
+        if("EXPIRED".equals(inv.get("status"))||"SUSPENDED".equals(inv.get("status"))||"DELETED".equals(inv.get("status")))
+            throw new IllegalArgumentException("Invitation cannot be published in its current state");
         if(inv.get("lastFunctionDate").toString().isBlank())throw new IllegalArgumentException("At least one function date is required");
         long consentCount=jdbc.queryForObject("SELECT count(*) FROM invitation_consent WHERE invitation_id=? AND user_id=? AND accepted=true AND content_version=?",Long.class,id,user,inv.get("version"));
-        long required=jdbc.queryForObject("SELECT count(*) FROM system_setting WHERE setting_key LIKE 'consent.required.%'",Long.class);
+        long required=jdbc.queryForObject("SELECT count(*) FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",Long.class);
         if(required==0||consentCount<required)throw new IllegalArgumentException("Please complete all required declarations before publishing");
-        int grace=settings.getInt("invitation.expiry.grace-days");
-        if(grace<0||grace>365)throw new IllegalStateException("Configured expiry grace period is invalid");
-        ZoneId zone=ZoneId.of(inv.get("timezone").toString());var expiry=LocalDate.parse(inv.get("lastFunctionDate").toString()).plusDays(grace+1L).atStartOfDay(zone).toInstant();
+
+        int grace;long expirySettingVersion;String agreedDate=inv.get("lastFunctionDate").toString();String agreedTimezone=inv.get("timezone").toString();
+        boolean paymentRequired=settings.getBoolean("invitation.publication.payment-required");
+        if(!inv.get("orderSnapshot").toString().isBlank()){
+            try{
+                var snapshot=mapper.readTree(inv.get("orderSnapshot").toString());
+                var policy=snapshot.path("expiryPolicy");
+                if(policy.isMissingNode())throw new IllegalStateException("Order is missing its expiry policy snapshot");
+                paymentRequired=policy.path("paymentRequired").asBoolean(paymentRequired);
+                grace=policy.path("graceDays").asInt(-1);
+                expirySettingVersion=policy.path("settingVersion").asLong(-1);
+                String orderDate=policy.path("lastFunctionDate").asText("");
+                String orderTimezone=policy.path("timezone").asText("");
+                if(!orderDate.equals(agreedDate)||!orderTimezone.equals(agreedTimezone))
+                    throw new IllegalStateException("Invitation event date or timezone differs from the accepted order snapshot");
+            }catch(IllegalStateException e){throw e;}catch(Exception e){throw new IllegalStateException("Unable to read the agreed order policy snapshot",e);}
+        }else{
+            grace=settings.getInt("invitation.expiry.grace-days");
+            expirySettingVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
+        }
+        if(paymentRequired&&!"PAID".equals(inv.get("orderStatus")))throw new IllegalArgumentException("A verified paid order is required before publication");
+        if(grace<0||grace>365)throw new IllegalStateException("Agreed expiry grace period is invalid");
+        ZoneId zone=ZoneId.of(agreedTimezone);
+        var expiry=LocalDate.parse(agreedDate).plusDays(grace+1L).atStartOfDay(zone).toInstant();
         byte[] bytes=new byte[24];random.nextBytes(bytes);String slug=Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         try{
-            long expirySettingVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
-            String expirySnapshot=mapper.writeValueAsString(Map.of("graceDays",grace,"lastFunctionDate",inv.get("lastFunctionDate"),"timezone",inv.get("timezone"),"expiresAt",expiry.toString(),"settingVersion",expirySettingVersion));
-            jdbc.update("INSERT INTO invitation_publication(invitation_id,publication_number,public_slug,published_snapshot,template_version_id,expires_at) VALUES (?,COALESCE((SELECT max(publication_number)+1 FROM invitation_publication WHERE invitation_id=?),1),?,jsonb_build_object('title',?,'content',?::jsonb,'expiryPolicy',?::jsonb),?,?,?)",id,id,slug,inv.get("title"),inv.get("content"),expirySnapshot,inv.get("templateVersionId"),java.sql.Timestamp.from(expiry));
-            jdbc.update("UPDATE invitation SET status='PUBLISHED',public_slug=?,expires_at=?,expiry_policy_snapshot=?::jsonb,updated_at=now() WHERE id=? AND owner_user_id=?",slug,java.sql.Timestamp.from(expiry),expirySnapshot,id,user);
+            String expirySnapshot=mapper.writeValueAsString(Map.of("graceDays",grace,"lastFunctionDate",agreedDate,"timezone",agreedTimezone,"expiresAt",expiry.toString(),"settingVersion",expirySettingVersion));
+            jdbc.update("INSERT INTO invitation_publication(invitation_id,publication_number,public_slug,published_snapshot,template_version_id,expires_at) VALUES (?,COALESCE((SELECT max(publication_number)+1 FROM invitation_publication WHERE invitation_id=?),1),?,jsonb_build_object('title',?,'content',?::jsonb,'expiryPolicy',?::jsonb),?,?,?)",
+                id,id,slug,inv.get("title"),inv.get("content"),expirySnapshot,inv.get("templateVersionId"),java.sql.Timestamp.from(expiry));
+            jdbc.update("UPDATE invitation SET status='PUBLISHED',public_slug=?,expires_at=?,expiry_policy_snapshot=?::jsonb,updated_at=now() WHERE id=? AND owner_user_id=?",
+                slug,java.sql.Timestamp.from(expiry),expirySnapshot,id,user);
         }catch(Exception e){throw new IllegalArgumentException("Unable to publish invitation");}
         audit.record(user,"INVITATION_PUBLISHED","INVITATION",id.toString(),"SUCCESS",Map.of("publicationSlug",slug,"expiresAt",expiry.toString(),"graceDays",grace));
         return ApiResponse.success(Map.of("slug",slug,"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+slug,"expiresAt",expiry.toString()));
