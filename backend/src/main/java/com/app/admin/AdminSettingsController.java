@@ -14,7 +14,7 @@ public class AdminSettingsController {
     private final JdbcTemplate jdbc;private final ObjectMapper mapper;
     public AdminSettingsController(JdbcTemplate jdbc,ObjectMapper mapper){this.jdbc=jdbc;this.mapper=mapper;}
     public record SettingRequest(String valueType,Object value,String description){}
-    @GetMapping public ApiResponse<?> list(){return ApiResponse.success(jdbc.queryForList("SELECT setting_key,setting_value,value_type,description,updated_at FROM system_setting WHERE is_sensitive=false ORDER BY setting_key"));}
+    @GetMapping public ApiResponse<?> list(){return ApiResponse.success(jdbc.queryForList("SELECT setting_key,setting_value::text AS setting_value,value_type,description,updated_at FROM system_setting WHERE is_sensitive=false ORDER BY setting_key"));}
     @PutMapping("/{key}") public ApiResponse<?> update(@PathVariable String key,@RequestBody SettingRequest req,Authentication auth){
         if(key.isBlank()||key.length()>160)throw new IllegalArgumentException("Invalid setting key");
         if(key.endsWith(".grace-days")){int days=Integer.parseInt(String.valueOf(req.value()));if(days<0||days>365)throw new IllegalArgumentException("Grace days must be between 0 and 365");}
