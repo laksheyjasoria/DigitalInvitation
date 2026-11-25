@@ -40,3 +40,25 @@ app:
       secret: ${APP_JWT_SECRET:}
       access-token-minutes: ${APP_JWT_ACCESS_TOKEN_MINUTES:15}
       refresh-token-days: ${APP_JWT_REFRESH_TOKEN_DAYS:30}
+
+  payment:
+    razorpay:
+      enabled: ${APP_RAZORPAY_ENABLED:false}
+      key-id: ${APP_RAZORPAY_KEY_ID:}
+      key-secret: ${APP_RAZORPAY_KEY_SECRET:}
+      webhook-secret: ${APP_RAZORPAY_WEBHOOK_SECRET:}
+  storage:
+    fileserver:
+      enabled: ${APP_FILESERVER_ENABLED:false}
+      base-url: ${APP_FILESERVER_BASE_URL:}
+      service-token: ${APP_FILESERVER_SERVICE_TOKEN:}
+      upload-path: ${APP_FILESERVER_UPLOAD_PATH:/master-drive/files}
+      stream-path: ${APP_FILESERVER_STREAM_PATH:/master-drive/files/{id}/stream}
+      delete-path: ${APP_FILESERVER_DELETE_PATH:/master-drive/files/{id}}
+  bootstrap:
+    admin:
+      email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+  invitation:
+    expiry:
+      cron: ${APP_INVITATION_EXPIRY_CRON:0 */15 * * * *}
