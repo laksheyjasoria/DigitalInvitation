@@ -18,13 +18,13 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 @RestController
 @RequestMapping("/api/v1/invitations/{invitationId}/media")
 public class MediaController {
- private final JdbcTemplate jdbc;private final StorageProvider storage;
- public MediaController(JdbcTemplate jdbc,StorageProvider storage){this.jdbc=jdbc;this.storage=storage;}
+ private final JdbcTemplate jdbc;private final StorageProvider storage;private final com.app.config.SystemSettingService settings;
+ public MediaController(JdbcTemplate jdbc,StorageProvider storage,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.storage=storage;this.settings=settings;}
  @PostMapping public ApiResponse<?> upload(@PathVariable UUID invitationId,@RequestParam("file")MultipartFile file,Authentication auth){
   UUID owner=UUID.fromString(auth.getName());
   jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",UUID.class,invitationId,owner);
-  long maxBytes=jdbc.query("SELECT setting_value::text FROM system_setting WHERE setting_key='invitation.media.max-file-bytes'",rs->rs.next()?Long.parseLong(rs.getString(1).replace("\"","")):10485760L);
-  long maxFiles=jdbc.query("SELECT setting_value::text FROM system_setting WHERE setting_key='invitation.media.max-files'",rs->rs.next()?Long.parseLong(rs.getString(1).replace("\"","")):30L);
+  long maxBytes=settings.getLong("invitation.media.max-file-bytes");
+  long maxFiles=settings.getLong("invitation.media.max-files");
   if(file.isEmpty()||file.getSize()>maxBytes)throw new IllegalArgumentException("File is empty or exceeds the configured upload limit");
   Long count=jdbc.queryForObject("SELECT count(*) FROM customer_media WHERE invitation_id=? AND owner_user_id=?",Long.class,invitationId,owner);
   if(count!=null&&count>=maxFiles)throw new IllegalArgumentException("Invitation has reached its configured media limit");
