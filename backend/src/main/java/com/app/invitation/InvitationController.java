@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/invitations")
 public class InvitationController {
-    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();
-    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper){this.jdbc=jdbc;this.mapper=mapper;}
+    private final JdbcTemplate jdbc;private final ObjectMapper mapper;private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;
+    public InvitationController(JdbcTemplate jdbc,ObjectMapper mapper,@org.springframework.beans.factory.annotation.Value("${app.public-base-url}")String publicBaseUrl){this.jdbc=jdbc;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;}
     public record CreateRequest(@NotNull UUID templateVersionId,@NotBlank String title,Map<String,Object> content,LocalDate lastFunctionDate,String timezone){}
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody CreateRequest r,Authentication auth){
@@ -76,6 +76,6 @@ public class InvitationController {
             jdbc.update("INSERT INTO invitation_publication(invitation_id,publication_number,public_slug,published_snapshot,template_version_id,expires_at) VALUES (?,COALESCE((SELECT max(publication_number)+1 FROM invitation_publication WHERE invitation_id=?),1),?,jsonb_build_object('title',?,'content',?::jsonb),?,?)",id,id,slug,inv.get("title"),inv.get("content"),inv.get("templateVersionId"),java.sql.Timestamp.from(expiry));
             jdbc.update("UPDATE invitation SET status='PUBLISHED',public_slug=?,expires_at=?,updated_at=now() WHERE id=? AND owner_user_id=?",slug,java.sql.Timestamp.from(expiry),id,user);
         }catch(Exception e){throw new IllegalArgumentException("Unable to publish invitation");}
-        return ApiResponse.success(Map.of("slug",slug,"url","/api/v1/public/invitations/"+slug,"expiresAt",expiry.toString()));
+        return ApiResponse.success(Map.of("slug",slug,"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+slug,"expiresAt",expiry.toString()));
     }
 }
