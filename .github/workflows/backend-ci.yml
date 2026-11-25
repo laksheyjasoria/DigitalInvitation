@@ -1,13 +1,13 @@
-name: Backend CI
+name: Platform CI
 on:
   push:
-    paths: ["backend/**",".github/workflows/backend-ci.yml"]
+    paths: ["backend/**","frontend/**","docker-compose.yml",".github/workflows/backend-ci.yml"]
   pull_request:
-    paths: ["backend/**",".github/workflows/backend-ci.yml"]
+    paths: ["backend/**","frontend/**","docker-compose.yml",".github/workflows/backend-ci.yml"]
 permissions:
   contents: read
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,6 +16,18 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Verify
+      - name: Check frontend JavaScript syntax
+        run: |
+          node --check frontend/app.js
+          node --check frontend/admin.js
+          node --check frontend/invitation.js
+          node --check frontend/verify.js
+          node --check frontend/forgot.js
+          node --check frontend/reset.js
+      - name: Verify backend
         working-directory: backend
         run: mvn --batch-mode verify
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
