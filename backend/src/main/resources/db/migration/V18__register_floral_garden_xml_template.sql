@@ -43,10 +43,10 @@ BEGIN
           {"key":"contact","label":"Contact number","type":"phone","required":false,"removable":true}]}
       ]
     }
-    $definition$::jsonb,'XML_PACKAGE','templates/TEMP0000001')
+    $definition$::jsonb,'XML_PACKAGE','templates/TEMP0000001-v1')
     ON CONFLICT(template_id,version_number) DO NOTHING;
 
     UPDATE invitation_template_version
-       SET definition_format='XML_PACKAGE',package_path='templates/TEMP0000001'
+       SET definition_format='XML_PACKAGE',package_path='templates/TEMP0000001-v1'
      WHERE template_id=template_uuid AND version_number=1;
 END $$;
