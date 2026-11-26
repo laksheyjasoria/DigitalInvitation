@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -103,6 +104,42 @@ class DatabaseMigrationSmokeTest {
         jdbc.update("UPDATE app_user SET auth_version=4 WHERE id=?", userId);
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshTokensRotateAndReplayRevokesTheSessionFamily() throws Exception {
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        String email = "refresh-" + userId + "@example.test";
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Refresh CI','CUSTOMER','ACTIVE')",
+                userId, email, "not-used");
+        String rawRefresh = "ci-refresh-" + java.util.UUID.randomUUID();
+        String tokenHash = java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                        .digest(rawRefresh.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        jdbc.update("INSERT INTO auth_refresh_session(user_id,token_hash,expires_at) VALUES (?,?,now()+interval '30 days')",
+                userId, tokenHash);
+
+        var rotated = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("di_refresh", rawRefresh)))
+                .andExpect(status().isOk())
+                .andReturn();
+        String setCookie = rotated.getResponse().getHeader("Set-Cookie");
+        assertTrue(setCookie != null && setCookie.contains("di_refresh=") && setCookie.contains("HttpOnly"),
+                "Refresh response must rotate an HttpOnly cookie");
+        Long activeAfterRotation = jdbc.queryForObject(
+                "SELECT count(*) FROM auth_refresh_session WHERE user_id=? AND revoked_at IS NULL",
+                Long.class, userId);
+        assertTrue(activeAfterRotation != null && activeAfterRotation == 1,
+                "Exactly one active refresh session should remain after rotation");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("di_refresh", rawRefresh)))
+                .andExpect(status().isUnauthorized());
+        Long activeAfterReplay = jdbc.queryForObject(
+                "SELECT count(*) FROM auth_refresh_session WHERE user_id=? AND revoked_at IS NULL",
+                Long.class, userId);
+        assertTrue(activeAfterReplay != null && activeAfterReplay == 0,
+                "Replaying a rotated token must revoke the active session family");
     }
 
     @Test
