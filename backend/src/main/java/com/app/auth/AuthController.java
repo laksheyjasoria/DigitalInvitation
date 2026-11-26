@@ -87,17 +87,17 @@ public class AuthController {
  @Transactional
  public ResponseEntity<ApiResponse<?>> refresh(@CookieValue(name="di_refresh",required=false)String raw,
     jakarta.servlet.http.HttpServletRequest request){
-  if(raw==null||raw.isBlank())throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Refresh session is unavailable");
+  if(raw==null||raw.isBlank())return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.SET_COOKIE,clearRefreshCookie().toString()).body(ApiResponse.failure("UNAUTHORIZED","Refresh session is unavailable"));
   var rows=jdbc.query("SELECT s.id,s.user_id,s.revoked_at,s.expires_at,u.email,u.role,u.status " +
     "FROM auth_refresh_session s JOIN app_user u ON u.id=s.user_id WHERE s.token_hash=? FOR UPDATE OF s",
     (rs,n)->Map.of("sessionId",rs.getObject("id",UUID.class),"userId",rs.getObject("user_id",UUID.class),
       "revoked",rs.getTimestamp("revoked_at")!=null,"expiresAt",rs.getTimestamp("expires_at").toInstant(),
       "email",rs.getString("email"),"role",rs.getString("role"),"status",rs.getString("status")),hash(raw));
-  if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Refresh session is invalid");
+  if(rows.isEmpty())return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.SET_COOKIE,clearRefreshCookie().toString()).body(ApiResponse.failure("UNAUTHORIZED","Refresh session is invalid"));
   var session=rows.get(0);UUID userId=(UUID)session.get("userId");
   if(Boolean.TRUE.equals(session.get("revoked"))||!((Instant)session.get("expiresAt")).isAfter(Instant.now())||!"ACTIVE".equals(session.get("status"))){
    jdbc.update("UPDATE auth_refresh_session SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=? AND revoked_at IS NULL",userId);
-   throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Refresh session expired or was already used");
+   return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.SET_COOKIE,clearRefreshCookie().toString()).body(ApiResponse.failure("UNAUTHORIZED","Refresh session expired or was already used"));
   }
   String next=token();UUID nextId=UUID.randomUUID();
   jdbc.update("UPDATE auth_refresh_session SET revoked_at=now(),replaced_by=? WHERE id=?",nextId,session.get("sessionId"));
