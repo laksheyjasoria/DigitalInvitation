@@ -24,7 +24,7 @@ public class InvitationController {
     public record CreateRequest(@NotNull UUID templateVersionId,@NotBlank String title,Map<String,Object> content,LocalDate lastFunctionDate,String timezone){}
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody CreateRequest r,Authentication auth){
-        UUID owner=UUID.fromString(auth.getName());String tz=r.timezone()==null?settings.getString("invitation.default-timezone"):r.timezone();ZoneId.of(tz);
+        UUID owner=UUID.fromString(auth.getName());String tz=r.timezone()==null?settings.getString("invitation.default-timezone"):r.timezone();validateTimezone(tz);
         Integer usableTemplate=jdbc.queryForObject("SELECT count(*) FROM invitation_template_version v JOIN invitation_template t ON t.id=v.template_id WHERE v.id=? AND t.status='PUBLISHED' AND v.version_number=t.current_version",Integer.class,r.templateVersionId());
         if(usableTemplate==null||usableTemplate!=1)throw new IllegalArgumentException("Select a currently published invitation template");
         UUID id=UUID.randomUUID();
@@ -33,16 +33,22 @@ public class InvitationController {
         return ApiResponse.success(Map.of("id",id,"status","DRAFT"));
     }
     @GetMapping public ApiResponse<?> list(Authentication auth){return ApiResponse.success(jdbc.queryForList("SELECT id,title,status,last_function_date,expires_at,created_at,updated_at FROM invitation WHERE owner_user_id=? AND status<>'DELETED' ORDER BY updated_at DESC",UUID.fromString(auth.getName())));}
-    @GetMapping("/{id}") public ApiResponse<?> get(@PathVariable UUID id,Authentication auth){return ApiResponse.success(jdbc.queryForMap("SELECT i.id,i.title,i.status,i.content::text AS content,i.template_version_id,i.last_function_date,i.timezone,i.public_slug,i.expires_at,i.created_at,i.updated_at,o.id order_id,o.status order_status FROM invitation i LEFT JOIN LATERAL (SELECT id,status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=? FOR UPDATE AND i.status<>'DELETED'",id,UUID.fromString(auth.getName())));}
+    @GetMapping("/{id}") public ApiResponse<?> get(@PathVariable UUID id,Authentication auth){
+        var rows=jdbc.queryForList("SELECT i.id,i.title,i.status,i.content::text AS content,i.template_version_id,i.last_function_date,i.timezone,i.public_slug,i.expires_at,i.created_at,i.updated_at,o.id order_id,o.status order_status FROM invitation i LEFT JOIN LATERAL (SELECT id,status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=? AND i.status<>'DELETED'",id,UUID.fromString(auth.getName()));
+        if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"Invitation not found");
+        return ApiResponse.success(rows.get(0));
+    }
     @PutMapping("/{id}") @org.springframework.transaction.annotation.Transactional
     public ApiResponse<?> update(@PathVariable UUID id,@RequestBody Map<String,Object> body,Authentication auth){
         String title=(String)body.get("title");Object content=body.get("content");if(title==null||title.isBlank()||title.length()>180)throw new IllegalArgumentException("A valid title is required");
         UUID owner=UUID.fromString(auth.getName());
+        String requestedTimezone=String.valueOf(body.getOrDefault("timezone",settings.getString("invitation.default-timezone")));
+        validateTimezone(requestedTimezone);
         UUID requestedTemplate=UUID.fromString(String.valueOf(body.get("templateVersionId")));
         Boolean sameTemplate=jdbc.query("SELECT template_version_id=? FROM invitation WHERE id=? AND owner_user_id=?",rs->rs.next()?rs.getBoolean(1):null,requestedTemplate,id,owner);
         Integer usableTemplate=jdbc.queryForObject("SELECT count(*) FROM invitation_template_version v JOIN invitation_template t ON t.id=v.template_id WHERE v.id=? AND t.status='PUBLISHED' AND v.version_number=t.current_version",Integer.class,requestedTemplate);
         if(!Boolean.TRUE.equals(sameTemplate)&&(usableTemplate==null||usableTemplate!=1))throw new IllegalArgumentException("Select a currently published invitation template");
-        try{int n=jdbc.update("UPDATE invitation SET title=?,content=?::jsonb,template_version_id=?,last_function_date=?,timezone=?,status='DRAFT',updated_at=now(),version=version+1 WHERE id=? AND owner_user_id=? AND (status='DRAFT' OR (status='PENDING_PAYMENT' AND NOT EXISTS (SELECT 1 FROM customer_order o WHERE o.invitation_id=invitation.id AND o.status IN ('CREATED','PAYMENT_PENDING','PAID'))))",title.trim(),mapper.writeValueAsString(content==null?Map.of():content),requestedTemplate,body.get("lastFunctionDate")==null?null:LocalDate.parse(String.valueOf(body.get("lastFunctionDate"))),body.getOrDefault("timezone",settings.getString("invitation.default-timezone")),id,owner);if(n==0)throw new IllegalArgumentException("Invitation not found or cannot be edited in its current state");}
+        try{int n=jdbc.update("UPDATE invitation SET title=?,content=?::jsonb,template_version_id=?,last_function_date=?,timezone=?,status='DRAFT',updated_at=now(),version=version+1 WHERE id=? AND owner_user_id=? AND (status='DRAFT' OR (status='PENDING_PAYMENT' AND NOT EXISTS (SELECT 1 FROM customer_order o WHERE o.invitation_id=invitation.id AND o.status IN ('CREATED','PAYMENT_PENDING','PAID'))))",title.trim(),mapper.writeValueAsString(content==null?Map.of():content),requestedTemplate,body.get("lastFunctionDate")==null?null:LocalDate.parse(String.valueOf(body.get("lastFunctionDate"))),requestedTimezone,id,owner);if(n==0)throw new IllegalArgumentException("Invitation not found or cannot be edited in its current state");}
         catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid invitation content");}
         return ApiResponse.success(Map.of("id",id,"status","DRAFT"));
     }
@@ -50,7 +56,7 @@ public class InvitationController {
     public ApiResponse<?> consent(@PathVariable UUID id,@RequestBody Map<String,Boolean> consents,Authentication auth,
                                   jakarta.servlet.http.HttpServletRequest request){
         UUID user=UUID.fromString(auth.getName());
-        var invitation=jdbc.queryForList("SELECT version FROM invitation WHERE id=? AND owner_user_id=?",id,user);
+        var invitation=jdbc.queryForList("SELECT version FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",id,user);
         if(invitation.isEmpty())throw new IllegalArgumentException("Invitation not found");
         var required=jdbc.query("SELECT substring(setting_key from 17) AS consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",
             (rs,n)->rs.getString("consent_key"));
@@ -72,7 +78,7 @@ public class InvitationController {
     @PostMapping("/{id}/publish")
     public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
-        var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,i.status,i.public_slug,i.expires_at,o.status order_status,o.pricing_snapshot::text order_snapshot FROM invitation i LEFT JOIN LATERAL (SELECT status,pricing_snapshot FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=?",
+        var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,i.status,i.public_slug,i.expires_at,o.status order_status,o.pricing_snapshot::text order_snapshot FROM invitation i LEFT JOIN LATERAL (SELECT status,pricing_snapshot FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=? FOR UPDATE",
             (rs,n)->{
                 Map<String,Object> m=new java.util.HashMap<>();
                 m.put("title",rs.getString("title"));m.put("content",rs.getString("content"));
@@ -154,4 +160,10 @@ public class InvitationController {
         audit.record(user,"INVITATION_PUBLISHED","INVITATION",id.toString(),"SUCCESS",Map.of("publicationSlug",slug,"expiresAt",expiry.toString(),"graceDays",grace));
         return ApiResponse.success(Map.of("slug",slug,"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+slug,"expiresAt",expiry.toString()));
     }
+    private void validateTimezone(String timezone){
+        if(timezone==null||timezone.isBlank()||!settings.getStringList("invitation.supported-timezones").contains(timezone))
+            throw new IllegalArgumentException("Select a supported invitation timezone");
+        try{ZoneId.of(timezone);}catch(Exception ex){throw new IllegalArgumentException("Invitation timezone is invalid");}
+    }
+
 }
