@@ -54,6 +54,7 @@
 
   function applyFields(root, sections, scopedSectionKey, item) {
     root.querySelectorAll("[data-field]").forEach(node => {
+      if (!item && node.closest("[data-repeat]")) return;
       const key = node.dataset.field;
       const sectionKey = node.dataset.section || scopedSectionKey;
       let value;
