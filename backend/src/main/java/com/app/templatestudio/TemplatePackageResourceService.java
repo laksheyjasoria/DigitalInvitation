@@ -28,6 +28,11 @@ public class TemplatePackageResourceService {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> sampleContent(String resourcePath) {
+        return (Map<String, Object>) preview(resourcePath).get("sampleContent");
+    }
+
     public boolean isAvailable(String resourcePath) {
         if (resourcePath == null) return false;
         try {
