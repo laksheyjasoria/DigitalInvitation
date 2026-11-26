@@ -106,4 +106,4 @@ $("policy-form").addEventListener("submit",async e=>{
  try{const r=await api("/admin/policies/"+type,{method:"POST",body:JSON.stringify({title:$("policy-title").value,bodyMarkdown:$("policy-body").value})});msg(type+" policy version "+r.version+" published.");e.target.reset();}
  catch(err){msg(err.message);}
 });
-(async()=>{if(!token)await refreshAccessToken();await load();})();
+(async()=>{if(!token&&!await refreshAccessToken()){window.location.replace("/app.html");return;}try{const me=await api("/auth/me");if(!["ADMIN","SUPER_ADMIN"].includes(me.role)){window.location.replace("/app.html");return;}await load();}catch(e){token="";sessionStorage.removeItem("di_token");window.location.replace("/app.html");}})();

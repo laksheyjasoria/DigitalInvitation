@@ -69,7 +69,6 @@ public class TemplateStudioController {
     }
 
     @PostMapping("/packages/{id}/revalidate")
-    @Transactional
     public ApiResponse<?> revalidate(@PathVariable UUID id, Authentication authentication) {
         List<byte[]> rows = jdbc.query("SELECT archive_bytes FROM template_package_stage WHERE id=?",
                 (rs, n) -> rs.getBytes(1), id);
@@ -84,7 +83,7 @@ public class TemplateStudioController {
         } catch (RuntimeException ex) {
             jdbc.update("UPDATE template_package_stage SET status='VALIDATION_FAILED',validation_error=?,validated_at=now() WHERE id=?",
                     safeMessage(ex), id);
-            throw ex;
+            return ApiResponse.failure("TEMPLATE_VALIDATION_FAILED", safeMessage(ex));
         }
     }
 
