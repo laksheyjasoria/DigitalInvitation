@@ -1,6 +1,7 @@
 package com.app;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -30,6 +31,9 @@ class DatabaseMigrationSmokeTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private com.app.auth.AuthRateLimitService authRateLimitService;
+
     @Test
     void configurableTimezoneOptionsAreSeeded() {
         String configured = jdbc.queryForObject(
@@ -37,6 +41,20 @@ class DatabaseMigrationSmokeTest {
                 String.class);
         assertTrue(configured != null && configured.contains("Asia/Kolkata"),
                 "The configurable timezone list should be seeded by Flyway");
+    }
+
+    @Test
+    void loginAttemptsAreThrottledAndCanBeCleared() {
+        String email = "ci-" + java.util.UUID.randomUUID() + "@example.test";
+        String ip = "192.0.2.10";
+        for (int attempt = 1; attempt < 8; attempt++) {
+            authRateLimitService.recordFailure(email, ip);
+        }
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> authRateLimitService.recordFailure(email, ip));
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> authRateLimitService.assertAllowed(email, ip));
+        authRateLimitService.clear(email, ip);
     }
 
     @Test
