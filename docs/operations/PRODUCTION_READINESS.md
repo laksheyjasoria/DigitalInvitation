@@ -3,8 +3,12 @@
 This implementation is an integration milestone. Do not accept live customers until every applicable gate is completed and signed off.
 
 ## Code and automated verification
-- [x] The latest code commit (79a0d862) passed GitHub Actions: Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test, Nginx configuration validation and Docker Compose validation. Documentation-only updates followed that tested code commit.
+- [x] The implementation commit `b34d1fafde81e3dd800761c4af081ac0630ba529` passed GitHub Actions run [45749137693](https://github.com/laksheyjasoria/DigitalInvitation/actions/runs/45749137693): Java 21 Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke tests, Nginx configuration validation and Docker Compose validation.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
+- [x] Seed twelve versioned sample invitation templates across wedding, birthday, anniversary, family, milestone and other categories, with unique palettes and section definitions.
+- [x] Verify the sample catalogue and nested design palettes against PostgreSQL in CI.
+- [x] Add Eclipse Java 21/Maven project metadata, launch configuration, local-only PostgreSQL Compose override and local frontend API proxy.
+- [ ] Complete a manual Eclipse startup and browser acceptance run on the owner's workstation.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
 - [x] Add configurable per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
 - [x] Add PostgreSQL-backed test proving an access JWT is rejected immediately after the user's auth version changes.
