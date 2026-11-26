@@ -3,7 +3,7 @@
 This implementation is an integration milestone. Do not accept live customers until every applicable gate is completed and signed off.
 
 ## Code and automated verification
-- [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test, Nginx configuration validation and Docker Compose validation passed in recent GitHub Actions runs; the latest commit is being rechecked.
+- [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test, Nginx configuration validation and Docker Compose validation passed in recent GitHub Actions runs; the current Master Drive adapter changes require a fresh CI run.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
 - [x] Add configurable per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
@@ -20,18 +20,22 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Add lifecycle tests for leap days, midnight boundaries, last-function date changes and purchase-time configuration snapshots.
 - [ ] Add tests for policy version changes and consent invalidation after content changes.
 - [x] Add owner-scoped media deletion and no-store cache headers for private/public media delivery.
-- [x] Add owner-scoped media deletion and no-store cache headers for private/public media.
 - [ ] Add upload malware/content scanning, decompression bomb limits, image dimension limits and storage cleanup tests.
 - [ ] Run SAST, dependency, container and secret scans; perform independent penetration testing.
 
 ## Integrations
-- [ ] Verify actual FileServer multipart upload, stream, delete, auth and error response contracts.
-- [ ] Test FileServer high concurrency, Telegram rate limits, range streaming and failure recovery.
+
+- [x] Implement DigitalInvitation's FileServer Master Drive adapter using the `X-Master-Key` header, configurable root drive ID/name, asynchronous upload completion polling, download and soft-delete routes.
+- [ ] Deploy/merge FileServer's `feature/master-drive-storage-api` branch into the actual FileServer environment used by DigitalInvitation.
+- [ ] Create/configure the dedicated Master Drive root (default name: `DigitalInvitation`) and set its ID or exact name in protected environment variables.
+- [ ] Verify actual Master Drive upload, status polling, download, byte-range streaming, soft-delete, auth, concurrency and failure recovery against the deployed instance.
+- [ ] Test FileServer high concurrency, Telegram rate limits, storage retries, orphan cleanup and recovery after FileServer downtime.
 - [ ] Configure SMTP and test deliverability, bounce handling, retries and outbox alerting.
-- [ ] Configure Razorpay live keys, webhook endpoint and webhook secret; test captures, failures, refunds and reconciliation.
+- [ ] Payment provider setup is intentionally deferred. Keep Razorpay disabled until credentials, webhook URL/signature verification and sandbox capture/failure/replay/refund tests are completed.
 - [ ] Configure provider secrets using a secret manager.
 
 ## Operations
+
 - [x] Add frontend CSP, HSTS, clickjacking, MIME-sniffing and referrer-policy headers, API request throttling, upload size ceiling and Nginx configuration validation.
 - [ ] Verify TLS termination, strict CORS allowlist, proxy trust configuration and production security headers.
 - [ ] Database encryption/backups, point-in-time recovery and restore drill.
@@ -43,10 +47,11 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Legal review of Terms, Privacy Policy, consent language, tax invoices and jurisdiction-specific requirements.
 
 ## Known implementation gaps
+
 - Access tokens are short-lived; refresh tokens rotate in HttpOnly SameSite cookies and password reset revokes refresh sessions. Automated replay/expiry and browser multi-tab tests remain.
 - Email outbox sends verification/reset messages when SMTP is enabled, but bounce/dead-letter operations need admin tooling.
-- FileServer adapter paths are configurable but not verified against the deployed upload/delete contract. Customer media now has owner-scoped deletion; orphan reconciliation and storage deletion retries remain.
-- Razorpay is the first concrete payment adapter; other providers and provider selection are not implemented. Checkout retry/idempotency and captured-payment settlement are implemented but still require provider sandbox and concurrency tests.
+- DigitalInvitation now targets the FileServer Master Drive API using the server-side `X-Master-Key`. Its upload operation waits for FileServer's asynchronous upload job and persists the returned Master Drive file ID. This code is not proof of a live integration: the compatible FileServer API branch must be deployed, a dedicated root drive configured, and upload/read/range/delete/auth/concurrency/recovery tests completed.
+- Razorpay remains the first payment adapter but is intentionally disabled until later configuration. Never mark an order paid or publish a paid invitation without a verified provider settlement. Provider sandbox and concurrency tests remain.
 - Configurable percentage tax, extension orders/settlement and purchase-time pricing/expiry snapshots are implemented in the current branch; coupons, invoice generation, refund administration and payment reconciliation UI are not complete.
 - Basic configurable RSVP capture, owner-only response listing, per-publication/client rate limiting and owner-only CSV export are implemented; full attendee management, invitation analytics and calendar/localization rendering remain.
 - Admin dashboard is a first control surface; full user/support/role management, admin MFA and audit search UI remain.
