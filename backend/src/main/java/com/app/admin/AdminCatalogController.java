@@ -143,7 +143,7 @@ public class AdminCatalogController {
     public ApiResponse<?> templateStatus(@PathVariable UUID id, @RequestBody Map<String, String> body,
                                          Authentication auth) {
         String status = body.get("status");
-        if (!Set.of("DRAFT", "PUBLISHED", "ARCHIVED").contains(status)) {
+        if (status == null || !Set.of("DRAFT", "PUBLISHED", "ARCHIVED").contains(status)) {
             throw new IllegalArgumentException("Invalid template status");
         }
         int changed = jdbc.update("UPDATE invitation_template SET status=?,updated_at=now() WHERE id=?", status, id);
