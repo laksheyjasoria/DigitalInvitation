@@ -46,12 +46,12 @@ async function load() {
     const content = snapshot.content || {};
     locale = content.locale === "hi" ? "hi" : "en";
     document.documentElement.lang = locale;
-    if(snapshot.templatePackageId){
+    if(snapshot.templatePackageRef){
       const frame=document.createElement("iframe");
       frame.className="template-package-frame public-template-frame";
       frame.title="Published invitation";
       frame.setAttribute("sandbox","allow-scripts");
-      frame.src="/template-preview/"+encodeURIComponent(snapshot.templatePackageId);
+      frame.src="/template-preview/"+encodeURIComponent(snapshot.templatePackageRef);
       $("invitation-render").replaceChildren(frame);
       frame.addEventListener("load",()=>{
         const values={};
