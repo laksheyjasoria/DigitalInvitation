@@ -17,11 +17,72 @@
     return JSON.stringify(value || {}).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
   }
 
+  function bindTemplateData(document, snapshot) {
+    const content = snapshot?.content || snapshot?.sampleContent || {};
+    const sections = Array.isArray(content.sections) ? content.sections : [];
+    const sectionByKey = key => sections.find(section => section.key === key);
+
+    document.querySelectorAll("[data-section-key]").forEach(node => {
+      const section = sectionByKey(node.dataset.sectionKey);
+      if (section && section.enabled === false) node.remove();
+    });
+
+    document.querySelectorAll("[data-repeat]").forEach(container => {
+      const sectionKey = container.dataset.repeat;
+      const section = sectionByKey(sectionKey);
+      const items = Array.isArray(section?.items) ? section.items : [];
+      const templateNode = container.querySelector(":scope > template");
+      const prototype = templateNode
+        ? templateNode.content.cloneNode(true)
+        : (container.firstElementChild ? container.firstElementChild.cloneNode(true) : null);
+      if (!prototype) return;
+      container.replaceChildren();
+      if (!section || section.enabled === false) {
+        container.hidden = true;
+        return;
+      }
+      items.forEach(item => {
+        const clone = prototype.cloneNode(true);
+        applyFields(clone, sections, sectionKey, item);
+        container.append(clone);
+      });
+      if (!items.length) container.hidden = true;
+    });
+
+    applyFields(document, sections, null, null);
+  }
+
+  function applyFields(root, sections, scopedSectionKey, item) {
+    root.querySelectorAll("[data-field]").forEach(node => {
+      if (!item && node.closest("[data-repeat]")) return;
+      const key = node.dataset.field;
+      const sectionKey = node.dataset.section || scopedSectionKey;
+      let value;
+      if (item && (!sectionKey || sectionKey === scopedSectionKey)) {
+        value = item[key];
+      } else if (sectionKey) {
+        const section = sections.find(candidate => candidate.key === sectionKey);
+        value = section?.values?.[key];
+        if (value === undefined && Array.isArray(section?.items)) value = section.items[0]?.[key];
+      } else {
+        for (const section of sections) {
+          value = section.values?.[key];
+          if (value === undefined && Array.isArray(section.items)) value = section.items[0]?.[key];
+          if (value !== undefined) break;
+        }
+      }
+      if (value !== undefined && value !== null && String(value).length) {
+        node.textContent = String(value);
+      }
+    });
+  }
+
   function buildSrcdoc(preview, snapshot) {
     if (!preview || typeof preview.html !== "string") throw new Error("The published template package is unavailable.");
     const parser = new DOMParser();
     const source = parser.parseFromString(preview.html, "text/html");
     source.querySelectorAll("base,iframe,object,embed,meta[http-equiv]").forEach(node => node.remove());
+    bindTemplateData(source, snapshot);
     source.querySelectorAll('link[rel~="stylesheet"]').forEach(node => { const href=node.getAttribute("href")||""; if(!href.startsWith("data:text/css"))node.remove(); });
     source.querySelectorAll("script[src]").forEach(node => {
       const src = node.getAttribute("src") || "";
