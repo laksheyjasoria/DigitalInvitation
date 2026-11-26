@@ -76,3 +76,8 @@
 .optional-fields>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .optional-fields button{font-size:10px;padding:7px 10px}
 .section-card [data-section]:disabled{opacity:.6;cursor:not-allowed}
+
+.template-package-frame{display:block;width:100%;height:min(78vh,900px);min-height:620px;border:0;border-radius:14px;background:#fbf7f1}
+.public-template-frame{height:min(88vh,1100px);min-height:680px}
+.xml-template-locked [data-up],.xml-template-locked [data-down],.xml-template-locked [data-add-field]{display:none!important}
+@media(max-width:640px){.template-package-frame{min-height:620px;height:76vh}.public-template-frame{min-height:700px;height:88vh}}
