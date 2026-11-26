@@ -27,6 +27,7 @@ public class EmailOutboxJob {
     Map payload=mapper.readValue((String)row.get("payload"),Map.class);String token=String.valueOf(payload.get("token"));String base=String.valueOf(payload.get("baseUrl")).replaceAll("/+$","");
     String template=(String)row.get("template");String subject,link,body;
     if(template.equals("EMAIL_VERIFY")){link=base+"/verify.html?token="+token;subject="Verify your DigitalInvitation account";body="Welcome. Verify your email address using this link:\n\n"+link+"\n\nThis link expires in 24 hours. If you did not create this account, ignore this message.";}
+    else if(template.equals("ADMIN_INVITE")){link=base+"/admin-invite.html?token="+token;subject="You are invited to DigitalInvitation administration";body="You have been invited to join DigitalInvitation as "+payload.get("role")+". Set your password and activate your account using this single-use link:\n\n"+link+"\n\nThis link expires in 24 hours. If you were not expecting this invitation, ignore this message.";}
     else{link=base+"/reset.html?token="+token;subject="Reset your DigitalInvitation password";body="Use this link to reset your password:\n\n"+link+"\n\nThis link expires in one hour. If you did not request a reset, ignore this message.";}
     SimpleMailMessage message=new SimpleMailMessage();message.setFrom(from);message.setTo((String)row.get("recipient"));message.setSubject(subject);message.setText(body);sender.send(message);
     jdbc.update("UPDATE email_outbox SET status='SENT',sent_at=now(),attempts=attempts+1 WHERE id=?",row.get("id"));
