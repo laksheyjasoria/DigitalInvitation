@@ -16,12 +16,17 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
         return http.csrf(AbstractHttpConfigurer::disable).cors(Customizer.withDefaults())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(e -> e.authenticationEntryPoint(new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(a -> a
+                // Public website and static frontend assets. API authorization remains explicit below.
+                .requestMatchers("/", "/index.html", "/site.css", "/home.js", "/app.html", "/app.css", "/app.js",
+                    "/invitation.html", "/invitation.js", "/forgot.html", "/forgot.js", "/reset.html", "/reset.js",
+                    "/verify.html", "/verify.js", "/admin.html", "/admin.js", "/favicon.ico", "/i/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/auth/register", "/api/v1/auth/verify-email", "/api/v1/auth/login",
