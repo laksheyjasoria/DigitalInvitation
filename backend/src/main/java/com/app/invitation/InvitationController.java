@@ -75,10 +75,10 @@ public class InvitationController {
         return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
     }
     @org.springframework.transaction.annotation.Transactional
-    @PostMapping("/{id}/publish")
+    @PostMapping("/{id}/publish") @org.springframework.transaction.annotation.Transactional
     public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
-        var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,i.status,i.public_slug,i.expires_at,o.status order_status,o.pricing_snapshot::text order_snapshot FROM invitation i LEFT JOIN LATERAL (SELECT status,pricing_snapshot FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=? FOR UPDATE",
+        var rows=jdbc.query("SELECT i.title,i.content,i.last_function_date,i.timezone,i.template_version_id,i.version,i.status,i.public_slug,i.expires_at,o.status order_status,o.pricing_snapshot::text order_snapshot FROM invitation i LEFT JOIN LATERAL (SELECT status,pricing_snapshot FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true WHERE i.id=? AND i.owner_user_id=? FOR UPDATE OF i",
             (rs,n)->{
                 Map<String,Object> m=new java.util.HashMap<>();
                 m.put("title",rs.getString("title"));m.put("content",rs.getString("content"));
