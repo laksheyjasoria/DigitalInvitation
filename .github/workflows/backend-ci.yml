@@ -59,6 +59,7 @@ jobs:
           node --check frontend/template-preview-frame.js
           node --check frontend/template-studio.js
           node --check frontend/template-package-renderer.js
+          node --check frontend/admin-invite.js
           node --check backend/src/main/resources/static/app.js
           node --check backend/src/main/resources/static/invitation.js
           node --check backend/src/main/resources/static/invitation-renderer.js
@@ -77,6 +78,8 @@ jobs:
           cmp frontend/template-studio.html backend/src/main/resources/static/template-studio.html
           cmp frontend/template-studio.js backend/src/main/resources/static/template-studio.js
           cmp frontend/template-package-renderer.js backend/src/main/resources/static/template-package-renderer.js
+          cmp frontend/admin-invite.html backend/src/main/resources/static/admin-invite.html
+          cmp frontend/admin-invite.js backend/src/main/resources/static/admin-invite.js
           node --check frontend/verify.js
           node --check frontend/forgot.js
           node --check frontend/reset.js
