@@ -5,14 +5,27 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @Service
 public class AuthRateLimitService {
-    private static final int MAX_ATTEMPTS = 8;
     private final JdbcTemplate jdbc;
+    private final int maxAttempts;
+    private final int windowMinutes;
+    private final int blockMinutes;
 
-    public AuthRateLimitService(JdbcTemplate jdbc) {
+    public AuthRateLimitService(JdbcTemplate jdbc,
+            @org.springframework.beans.factory.annotation.Value("${app.security.login.max-attempts:8}") int maxAttempts,
+            @org.springframework.beans.factory.annotation.Value("${app.security.login.window-minutes:15}") int windowMinutes,
+            @org.springframework.beans.factory.annotation.Value("${app.security.login.block-minutes:15}") int blockMinutes) {
+        if (maxAttempts < 1 || windowMinutes < 1 || blockMinutes < 1) {
+            throw new IllegalArgumentException("Login rate-limit settings must be positive");
+        }
         this.jdbc = jdbc;
+        this.maxAttempts = maxAttempts;
+        this.windowMinutes = windowMinutes;
+        this.blockMinutes = blockMinutes;
     }
 
     public void assertAllowed(String email, String remoteAddress) {
@@ -21,7 +34,8 @@ public class AuthRateLimitService {
                 "SELECT COALESCE(blocked_until > now(),false) FROM auth_login_attempt_bucket WHERE bucket_key=?",
                 rs -> rs.next() ? rs.getBoolean(1) : false, key);
         if (Boolean.TRUE.equals(blocked)) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "Too many sign-in attempts. Please wait 15 minutes and try again.");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many sign-in attempts. Please wait " + blockMinutes + " minutes and try again.");
         }
     }
 
@@ -31,13 +45,14 @@ public class AuthRateLimitService {
                 "INSERT INTO auth_login_attempt_bucket(bucket_key,attempts,window_started_at,blocked_until) " +
                 "VALUES (?,1,now(),NULL) " +
                 "ON CONFLICT(bucket_key) DO UPDATE SET " +
-                "attempts=CASE WHEN auth_login_attempt_bucket.window_started_at < now()-interval '15 minutes' THEN 1 ELSE auth_login_attempt_bucket.attempts+1 END, " +
-                "window_started_at=CASE WHEN auth_login_attempt_bucket.window_started_at < now()-interval '15 minutes' THEN now() ELSE auth_login_attempt_bucket.window_started_at END, " +
-                "blocked_until=CASE WHEN (CASE WHEN auth_login_attempt_bucket.window_started_at < now()-interval '15 minutes' THEN 1 ELSE auth_login_attempt_bucket.attempts+1 END) >= ? THEN now()+interval '15 minutes' ELSE NULL END, " +
+                "attempts=CASE WHEN auth_login_attempt_bucket.window_started_at < now()-(? * interval '1 minute') THEN 1 ELSE auth_login_attempt_bucket.attempts+1 END, " +
+                "window_started_at=CASE WHEN auth_login_attempt_bucket.window_started_at < now()-(? * interval '1 minute') THEN now() ELSE auth_login_attempt_bucket.window_started_at END, " +
+                "blocked_until=CASE WHEN (CASE WHEN auth_login_attempt_bucket.window_started_at < now()-(? * interval '1 minute') THEN 1 ELSE auth_login_attempt_bucket.attempts+1 END) >= ? THEN now()+(? * interval '1 minute') ELSE NULL END, " +
                 "updated_at=now() RETURNING attempts",
-                Integer.class, key, MAX_ATTEMPTS);
-        if (attempts != null && attempts >= MAX_ATTEMPTS) {
-            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "Too many sign-in attempts. Please wait 15 minutes and try again.");
+                Integer.class, key, windowMinutes, windowMinutes, windowMinutes, maxAttempts, blockMinutes);
+        if (attempts != null && attempts >= maxAttempts) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many sign-in attempts. Please wait " + blockMinutes + " minutes and try again.");
         }
     }
 
