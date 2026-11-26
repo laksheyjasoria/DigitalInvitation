@@ -69,8 +69,9 @@ public class TemplatePackageValidator {
             String id = document.getDocumentElement().getAttribute("id");
             String name = document.getDocumentElement().getAttribute("name");
             String version = document.getDocumentElement().getAttribute("version");
-            if (!id.matches("TEMP[0-9]{7}") || name.isBlank() || version.isBlank()) {
-                throw new IllegalArgumentException("template.xml requires a TEMP0000001 ID, name and version");
+            if (!id.matches("TEMP[0-9]{7}") || name.isBlank() || name.length() > 160
+                    || !version.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,39}")) {
+                throw new IllegalArgumentException("template.xml requires a TEMP0000001 ID, a name up to 160 characters and a safe version string");
             }
             return new ValidationResult(id, name, version, count, expanded, sha256(archive));
         } catch (IllegalArgumentException ex) {
