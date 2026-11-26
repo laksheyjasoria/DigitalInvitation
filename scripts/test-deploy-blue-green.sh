@@ -39,6 +39,7 @@ DOCKER
 
 SUCCESS="$TMP/success"
 make_fixture "$SUCCESS"
+SUCCESS_INODE_BEFORE="$(stat -c %i "$SUCCESS/deploy/nginx/upstream.conf")"
 (
   cd "$SUCCESS"
   PATH="$SUCCESS/bin:$PATH" \
@@ -48,7 +49,9 @@ make_fixture "$SUCCESS"
 )
 if ! grep -q "digital-invitation-backend-green" "$SUCCESS/deploy/nginx/upstream.conf"; then echo "Successful deployment did not switch the host upstream file"; cat "$SUCCESS/deploy/nginx/upstream.conf"; exit 1; fi
 if ! grep -q "nginx -s reload" "$SUCCESS/docker.log"; then echo "Nginx reload was not requested"; cat "$SUCCESS/docker.log"; exit 1; fi
-echo "Successful switch assertions passed."
+SUCCESS_INODE_AFTER="$(stat -c %i "$SUCCESS/deploy/nginx/upstream.conf")"
+if [[ "$SUCCESS_INODE_BEFORE" != "$SUCCESS_INODE_AFTER" ]]; then echo "Nginx upstream bind-mounted file was replaced instead of updated in place"; exit 1; fi
+echo "Successful switch and bind-mount assertions passed."
 
 ROLLBACK="$TMP/rollback"
 make_fixture "$ROLLBACK"
