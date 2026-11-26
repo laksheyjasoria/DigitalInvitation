@@ -53,12 +53,15 @@ async function openInvitation(id){try{const i=await api("/invitations/"+id);acti
  $("rsvp-management").classList.toggle("hidden",!["PUBLISHED","EXPIRED"].includes(state));
  if(["PUBLISHED","EXPIRED"].includes(state))await loadRsvps();
  $("save").classList.toggle("hidden",state==="READY_TO_PUBLISH"||state==="PUBLISHED"||state==="EXPIRED");
- $("create-order").classList.toggle("hidden",state==="READY_TO_PUBLISH"||state==="PUBLISHED"||state==="PENDING_PAYMENT"&&["CREATED","PAYMENT_PENDING"].includes(i.order_status));
+ $("create-order").classList.toggle("hidden",state==="READY_TO_PUBLISH"||state==="PUBLISHED"||state==="EXPIRED"||state==="SUSPENDED"||state==="PENDING_PAYMENT"&&["CREATED","PAYMENT_PENDING"].includes(i.order_status));
  $("resume-checkout").classList.toggle("hidden",!(state==="PENDING_PAYMENT"&&["CREATED","PAYMENT_PENDING"].includes(i.order_status)));
  $("publish-invitation").classList.toggle("hidden",state!=="READY_TO_PUBLISH");
  if(state==="PUBLISHED"){
   $("consent-panel").classList.add("hidden");$("published-result").classList.remove("hidden");
   $("published-result").innerHTML='<p><strong>Invitation is live.</strong></p><p><a target="_blank" rel="noopener" href="'+escapeHtml(location.origin+'/i/'+i.public_slug)+'">'+escapeHtml(location.origin+'/i/'+i.public_slug)+'</a></p><img width="180" height="180" alt="Invitation QR code" src="'+API+'/public/invitations/'+encodeURIComponent(i.public_slug)+'/qr"><p class="muted">Valid until '+escapeHtml(i.expires_at||"the configured expiry date")+'</p>';
+ }else if(state==="EXPIRED"||state==="SUSPENDED"){
+  $("consent-panel").classList.add("hidden");$("published-result").classList.remove("hidden");
+  $("published-result").textContent=state==="EXPIRED"?"This invitation has expired. You can still review guest responses or purchase an extension if enabled.":"This invitation has been suspended by the platform administrator.";
  }
  if(state==="PENDING_PAYMENT"&&i.order_status==="FAILED")$("payment-message").textContent="The previous payment attempt failed. Update your draft and try again.";
 } catch(e){alert(e.message);}}
