@@ -8,8 +8,12 @@ on:
         required: true
         type: string
   push:
+    branches:
+      - "template-releases"
     tags:
       - "v*"
+    paths:
+      - "backend/src/main/resources/templates/packages/**"
 
 permissions:
   contents: read
@@ -69,6 +73,7 @@ jobs:
           tags: |
             type=ref,event=tag
             type=raw,value=\${{ inputs.image_tag }},enable=\${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=template-latest,enable=${{ github.ref == 'refs/heads/template-releases' }}
             type=sha,format=long
       - name: Build and publish immutable application image
         uses: docker/build-push-action@v6
@@ -80,3 +85,17 @@ jobs:
           labels: \${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Blue-green deployment
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/template-releases' && vars.DI_DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, digitalinvitation]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Deploy verified image with blue-green switch
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: bash scripts/deploy-blue-green.sh "$IMAGE_TAG"
