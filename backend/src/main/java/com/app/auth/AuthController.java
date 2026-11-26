@@ -42,10 +42,10 @@ public class AuthController {
   this.jdbc=jdbc;this.encoder=encoder;this.jwt=jwt;this.mapper=mapper;this.rateLimit=rateLimit;
   this.publicBaseUrl=publicBaseUrl;this.refreshTokenDays=refreshTokenDays;this.secureRefreshCookie=secureRefreshCookie;this.mailEnabled=mailEnabled;
  }
- public record RegisterRequest(@Email @NotBlank String email,@NotBlank @Size(min=12,max=72) String password,@NotBlank @Size(max=120) String displayName){}
- public record LoginRequest(@Email @NotBlank String email,@NotBlank String password){}
+ public record RegisterRequest(@Email @NotBlank String email,@NotBlank @Size(min=8,max=72) @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9\\s]).{8,72}$", message = "Password must be at least 8 characters and include at least one letter, one number, and one symbol") String password,@NotBlank @Size(max=120) String displayName){}
+ public record LoginRequest(@Email @NotBlank String email,@NotBlank @Size(min=8,max=72) String password){}
  public record TokenRequest(@NotBlank String token){}
- public record ResetRequest(@NotBlank String token,@NotBlank @Size(min=12,max=72) String newPassword){}
+ public record ResetRequest(@NotBlank String token,@NotBlank @Size(min=8,max=72) @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9\\s]).{8,72}$", message = "Password must be at least 8 characters and include at least one letter, one number, and one symbol") String newPassword){}
 
  @PostMapping("/register") @ResponseStatus(HttpStatus.CREATED)
  @Transactional
