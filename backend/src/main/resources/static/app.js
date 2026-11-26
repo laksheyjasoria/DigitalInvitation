@@ -49,8 +49,8 @@ $("new-invitation").addEventListener("click",()=>showTemplateGallery($("gallery-
 $("gallery-category").addEventListener("change",e=>showTemplateGallery(e.target.value).catch(err=>alert(err.message)));
 $("gallery-cancel").addEventListener("click",()=>{$("template-gallery").classList.add("hidden");$("empty-editor").classList.remove("hidden");});
 $("template-preview-close").addEventListener("click",()=>$("template-preview-dialog").close());
-$("category").addEventListener("change",e=>loadTemplates(e.target.value));
-$("template").addEventListener("change",async()=>{try{const rows=await api("/catalog/categories/"+$("category").value+"/templates");const selected=rows.find(t=>t.template_version_id===$("template").value);if(selected){const d=await api("/catalog/templates/"+selected.id);templateDefinition=typeof d.definition==="string"?JSON.parse(d.definition):d.definition;showTemplateInfo(selected);renderSections();}}catch(e){alert(e.message);}});
+$("category").addEventListener("change",e=>{invalidateInvitationPreview();loadTemplates(e.target.value);});
+$("template").addEventListener("change",async()=>{try{invalidateInvitationPreview();const rows=await api("/catalog/categories/"+$("category").value+"/templates");const selected=rows.find(t=>t.template_version_id===$("template").value);if(selected){const d=await api("/catalog/templates/"+selected.id);templateDefinition=typeof d.definition==="string"?JSON.parse(d.definition):d.definition;showTemplateInfo(selected);renderSections();}}catch(e){alert(e.message);}});
 function renderSections(){
  if(!templateDefinition)templateDefinition={sections:[]};
  if(!Array.isArray(templateDefinition.sections))templateDefinition.sections=[];
@@ -143,6 +143,8 @@ $("preview-toggle").addEventListener("click",()=>$("preview").click());
 function invalidateInvitationPreview(){if(previewReviewed){previewReviewed=false;$("create-order").disabled=true;$("payment-message").textContent="Your invitation changed. Preview it again before continuing.";}}
 $("section-editor").addEventListener("input",invalidateInvitationPreview);
 $("section-editor").addEventListener("change",invalidateInvitationPreview);
+$("section-editor").addEventListener("click",invalidateInvitationPreview);
+$("add-section").addEventListener("click",invalidateInvitationPreview);
 ["invite-title","function-date","invitation-locale","timezone"].forEach(id=>{const el=$(id);if(el){el.addEventListener("input",invalidateInvitationPreview);el.addEventListener("change",invalidateInvitationPreview);}});
 const declarations=[["accuracy","I confirm that names, dates, venues and invitation details are accurate."],["preview","I have reviewed and approve the invitation preview."],["rights","I have permission to upload and publish all submitted content and personal information."],["expiry","I understand the invitation validity and expiry policy displayed at checkout."],["publication","I understand that content I publish will be accessible to anyone with its unique link."],["terms","I agree to the applicable Terms and Conditions."],["privacy","I acknowledge the applicable Privacy Policy."]];
 $("consent-items").innerHTML=declarations.map(([key,label])=>'<label class="consent"><input id="consent-'+key+'" type="checkbox"><span>'+escapeHtml(label)+'</span></label>').join("");
