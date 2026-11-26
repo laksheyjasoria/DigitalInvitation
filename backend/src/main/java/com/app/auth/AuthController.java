@@ -37,6 +37,7 @@ public class AuthController {
    @Value("${app.public-base-url}")String publicBaseUrl,
    @Value("${app.security.jwt.refresh-token-days:30}")long refreshTokenDays,
    @Value("${app.security.refresh-cookie-secure:true}")boolean secureRefreshCookie){
+  if(refreshTokenDays<1||refreshTokenDays>365)throw new IllegalArgumentException("Refresh token lifetime must be between 1 and 365 days");
   this.jdbc=jdbc;this.encoder=encoder;this.jwt=jwt;this.mapper=mapper;this.rateLimit=rateLimit;
   this.publicBaseUrl=publicBaseUrl;this.refreshTokenDays=refreshTokenDays;this.secureRefreshCookie=secureRefreshCookie;
  }
