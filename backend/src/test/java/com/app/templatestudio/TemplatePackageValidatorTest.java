@@ -9,7 +9,7 @@ import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 
 class TemplatePackageValidatorTest {
-    private final TemplatePackageValidator validator = new TemplatePackageValidator();
+    private final TemplatePackageValidator validator = new TemplatePackageValidator(new TemplateDefinitionMapper());
 
     @Test
     void acceptsValidTemplatePackage() throws Exception {
