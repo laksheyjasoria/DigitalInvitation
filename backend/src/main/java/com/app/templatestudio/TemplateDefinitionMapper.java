@@ -51,7 +51,8 @@ public class TemplateDefinitionMapper {
                     if (!java.util.Set.of("text","longtext","date","time","email","phone","location","number","url").contains(type))
                         throw new IllegalArgumentException("Unsupported field type: " + type);
                     boolean fieldRequired = Boolean.parseBoolean(field.getAttribute("required"));
-                    boolean fieldOptional = field.hasAttribute("optional")\n                            ? Boolean.parseBoolean(field.getAttribute("optional")) : !fieldRequired;
+                    boolean fieldOptional = field.hasAttribute("optional")
+                            ? Boolean.parseBoolean(field.getAttribute("optional")) : !fieldRequired;
                     if (fieldRequired && fieldOptional) throw new IllegalArgumentException("A required field cannot be optional: " + fieldKey);
                     repeatable |= Boolean.parseBoolean(field.getAttribute("repeatable")) || type.equals("repeatable");
 
