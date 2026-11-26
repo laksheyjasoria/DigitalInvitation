@@ -26,45 +26,6 @@ function t(key) {
   return (translations[locale] || translations.en)[key] || translations.en[key] || key;
 }
 
-function applyDesign(design = {}) {
-  const palette = design.palette || {};
-  const variables = {
-    "--invitation-background": palette.background,
-    "--invitation-surface": palette.surface,
-    "--invitation-text": palette.text,
-    "--invitation-accent": palette.accent,
-    "--invitation-muted": palette.muted
-  };
-  Object.entries(variables).forEach(([name, value]) => {
-    if (typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)) {
-      document.documentElement.style.setProperty(name, value);
-    }
-  });
-
-  const allowedStyles = new Set([
-    "floral", "royal", "minimal", "romantic", "playful",
-    "elegant", "botanical", "bold", "festive", "classic"
-  ]);
-  const style = allowedStyles.has(design.style) ? design.style : "classic";
-  document.body.className = "invitation-page theme-" + style;
-  document.documentElement.dataset.invitationFont = design.font === "sans" ? "sans" : "serif";
-}
-
-function renderSection(section) {
-  const values = Object.entries(section.values || {})
-    .map(([label, value]) => '<p><strong>' + safe(label) + '</strong><span>' + safe(value) + '</span></p>')
-    .join("");
-  const items = (section.items || []).map((item, index) => {
-    const title = item.eventName || ("Function " + (index + 1));
-    const details = Object.entries(item)
-      .filter(([key]) => key !== "eventName")
-      .map(([label, value]) => '<p><strong>' + safe(label) + '</strong><span>' + safe(value) + '</span></p>')
-      .join("");
-    return '<article class="invitation-event"><h3>' + safe(title) + '</h3>' + details + '</article>';
-  }).join("");
-  return '<section class="section-card"><h2>' + safe(section.label) + '</h2>' + values + items + '</section>';
-}
-
 async function load() {
   try {
     const response = await fetch("/api/v1/public/invitations/" + encodeURIComponent(slug), {
@@ -85,18 +46,7 @@ async function load() {
     const content = snapshot.content || {};
     locale = content.locale === "hi" ? "hi" : "en";
     document.documentElement.lang = locale;
-    applyDesign(snapshot.design || {});
-
-    $("inv-title").textContent = snapshot.title || "You are invited";
-    $("inv-eyebrow").textContent = t("eyebrow");
-    const sections = Array.isArray(content.sections) ? content.sections : [];
-    $("inv-content").innerHTML = sections
-      .filter(section => section.enabled && (
-        Object.keys(section.values || {}).length > 0 ||
-        (section.items || []).some(item => Object.keys(item || {}).length > 0)
-      ))
-      .map(renderSection)
-      .join("");
+    window.InvitationRenderer.render($("invitation-render"), snapshot);
 
     $("loading").classList.add("hidden");
     $("invitation").classList.remove("hidden");
