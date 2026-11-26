@@ -17,10 +17,11 @@ services:
     networks: [app-net]
 
   backend:
+    image: ghcr.io/laksheyjasoria/digitalinvitation:${DIGITALINVITATION_IMAGE_TAG:-local}
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: digital-invitation-backend
+    container_name: digital-invitation-backend-blue
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
@@ -55,6 +56,11 @@ services:
       APP_FILESERVER_POLL_INTERVAL_MILLIS: ${APP_FILESERVER_POLL_INTERVAL_MILLIS:-1000}
       APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL:-}
       APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD:-}
+      APP_GITHUB_TOKEN: ${APP_GITHUB_TOKEN:-}
+      APP_GITHUB_REPOSITORY: ${APP_GITHUB_REPOSITORY:-laksheyjasoria/DigitalInvitation}
+      APP_GITHUB_TEMPLATE_RELEASES_ENABLED: ${APP_GITHUB_TEMPLATE_RELEASES_ENABLED:-false}
+      APP_GITHUB_TEMPLATE_RELEASE_BRANCH: ${APP_GITHUB_TEMPLATE_RELEASE_BRANCH:-template-releases}
+      APP_GITHUB_TEMPLATE_BASE_BRANCH: ${APP_GITHUB_TEMPLATE_BASE_BRANCH:-main}
       APP_MAIL_ENABLED: ${APP_MAIL_ENABLED:-false}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@example.invalid}
       APP_MAIL_OUTBOX_DELAY_MS: ${APP_MAIL_OUTBOX_DELAY_MS:-15000}
@@ -85,6 +91,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    volumes:
+      - ./deploy/nginx/upstream.conf:/etc/nginx/conf.d/upstream.conf:ro
     networks: [app-net]
 
 volumes:
