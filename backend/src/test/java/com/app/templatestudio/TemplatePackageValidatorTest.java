@@ -17,7 +17,7 @@ class TemplatePackageValidatorTest {
         assertEquals("TEMP0000001", result.templateId());
         assertEquals("Floral Garden", result.templateName());
         assertEquals("1.0.0", result.version());
-        assertEquals(5, result.fileCount());
+        assertEquals(7, result.fileCount());
         assertEquals(64, result.sha256().length());
     }
 
@@ -56,6 +56,8 @@ class TemplatePackageValidatorTest {
             add(out, "script.js", "void 0;");
             add(out, "template.xml", xml);
             add(out, "preview.xml", preview);
+            add(out, "assets/loop.gif", "GIF89a");
+            add(out, "animations/sequence.json", "{\"frames\":[]}");
             if (traversal) add(out, "../outside.txt", "bad");
             return bytes.toByteArray();
         } catch (Exception ex) {
