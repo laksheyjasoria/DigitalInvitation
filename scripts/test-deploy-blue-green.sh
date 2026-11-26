@@ -46,8 +46,9 @@ make_fixture "$SUCCESS"
   DOCKER_CALL_LOG="$SUCCESS/docker.log" \
   bash "$SCRIPT" "test-image-sha"
 )
-grep -q "digital-invitation-backend-green" "$SUCCESS/deploy/nginx/upstream.conf"
-grep -q "nginx -s reload" "$SUCCESS/docker.log"
+if ! grep -q "digital-invitation-backend-green" "$SUCCESS/deploy/nginx/upstream.conf"; then echo "Successful deployment did not switch the host upstream file"; cat "$SUCCESS/deploy/nginx/upstream.conf"; exit 1; fi
+if ! grep -q "nginx -s reload" "$SUCCESS/docker.log"; then echo "Nginx reload was not requested"; cat "$SUCCESS/docker.log"; exit 1; fi
+echo "Successful switch assertions passed."
 
 ROLLBACK="$TMP/rollback"
 make_fixture "$ROLLBACK"
