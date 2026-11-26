@@ -7,7 +7,8 @@ RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-RUN groupadd --system spring && useradd --system --gid spring --home-dir /app spring
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system spring && useradd --system --gid spring --home-dir /app spring
 COPY --from=build /workspace/target/digital-invitation-0.1.0-SNAPSHOT.jar /app/app.jar
 USER spring:spring
 EXPOSE 8080
