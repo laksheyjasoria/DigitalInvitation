@@ -108,6 +108,14 @@ public class AdminCatalogController {
         if (status == null || !Set.of("DRAFT", "PUBLISHED", "ARCHIVED").contains(status)) {
             throw new IllegalArgumentException("Invalid template status");
         }
+        if ("PUBLISHED".equals(status)) {
+            var current = jdbc.query("SELECT t.status,v.package_resource_path FROM invitation_template t " +
+                    "LEFT JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version WHERE t.id=?",
+                    (rs,n)->Map.of("status",rs.getString("status"),"packagePath",rs.getString("package_resource_path")==null?"":rs.getString("package_resource_path")),id);
+            if(current.isEmpty())throw new IllegalArgumentException("Template not found");
+            if("DRAFT".equals(current.get(0).get("status"))&&String.valueOf(current.get(0).get("packagePath")).isBlank())
+                throw new IllegalArgumentException("Publish a validated XML package through Template Studio before activating this template");
+        }
         int changed = jdbc.update("UPDATE invitation_template SET status=?,updated_at=now() WHERE id=?", status, id);
         if (changed == 0) throw new IllegalArgumentException("Template not found");
         audit.record(UUID.fromString(auth.getName()), "TEMPLATE_STATUS_CHANGED", "TEMPLATE", id.toString(),
