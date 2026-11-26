@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthRateLimitService {
     private static final int MAX_ATTEMPTS = 8;
-    private static final int WINDOW_MINUTES = 15;
     private final JdbcTemplate jdbc;
 
     public AuthRateLimitService(JdbcTemplate jdbc) {
@@ -38,7 +37,7 @@ public class AuthRateLimitService {
                 "updated_at=now() RETURNING attempts",
                 Integer.class, key, MAX_ATTEMPTS);
         if (attempts != null && attempts >= MAX_ATTEMPTS) {
-            throw new LoginRateLimitException();
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "Too many sign-in attempts. Please wait 15 minutes and try again.");
         }
     }
 
