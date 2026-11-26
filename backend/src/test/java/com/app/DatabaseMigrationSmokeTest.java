@@ -106,6 +106,41 @@ class DatabaseMigrationSmokeTest {
     }
 
     @Test
+    void invitationDetailsAreOwnerScopedAndPublicationLockQueryIsValid() throws Exception {
+        java.util.UUID ownerId = java.util.UUID.randomUUID();
+        java.util.UUID otherId = java.util.UUID.randomUUID();
+        String ownerEmail = "owner-" + ownerId + "@example.test";
+        String otherEmail = "other-" + otherId + "@example.test";
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Owner','CUSTOMER','ACTIVE')",
+                ownerId, ownerEmail, "not-used");
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Other','CUSTOMER','ACTIVE')",
+                otherId, otherEmail, "not-used");
+        java.util.UUID templateVersionId = jdbc.queryForObject(
+                "SELECT id FROM invitation_template_version ORDER BY created_at LIMIT 1", java.util.UUID.class);
+        java.util.UUID invitationId = java.util.UUID.randomUUID();
+        jdbc.update("INSERT INTO invitation(id,owner_user_id,template_version_id,title,content,timezone) VALUES (?,?,?,'Private CI invitation','{}'::jsonb,'Asia/Kolkata')",
+                invitationId, ownerId, templateVersionId);
+
+        String otherToken = jwtService.issue(otherId.toString(), otherEmail, "CUSTOMER", 0);
+        mockMvc.perform(get("/api/v1/invitations/" + invitationId)
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isNotFound());
+
+        String ownerToken = jwtService.issue(ownerId.toString(), ownerEmail, "CUSTOMER", 0);
+        mockMvc.perform(get("/api/v1/invitations/" + invitationId)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk());
+
+        Integer lockQueryRows = jdbc.queryForObject(
+                "SELECT count(*) FROM invitation i LEFT JOIN LATERAL " +
+                "(SELECT id,status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true " +
+                "WHERE i.id=? AND i.owner_user_id=?",
+                Integer.class, invitationId, ownerId);
+        assertTrue(lockQueryRows != null && lockQueryRows == 1,
+                "Owner-scoped invitation query should return exactly one row");
+    }
+
+    @Test
     void flywayCreatesCorePlatformTables() {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM information_schema.tables " +
