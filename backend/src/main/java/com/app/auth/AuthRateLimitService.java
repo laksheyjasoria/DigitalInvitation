@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthRateLimitService {
     private static final int MAX_ATTEMPTS = 8;
+    private static final int WINDOW_MINUTES = 15;
     private final JdbcTemplate jdbc;
 
     public AuthRateLimitService(JdbcTemplate jdbc) {
@@ -43,6 +44,11 @@ public class AuthRateLimitService {
 
     public void clear(String email, String remoteAddress) {
         jdbc.update("DELETE FROM auth_login_attempt_bucket WHERE bucket_key=?", key(email, remoteAddress));
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 17 * * * *")
+    public void removeExpiredBuckets() {
+        jdbc.update("DELETE FROM auth_login_attempt_bucket WHERE updated_at < now()-interval '24 hours'");
     }
 
     private String key(String email, String remoteAddress) {
