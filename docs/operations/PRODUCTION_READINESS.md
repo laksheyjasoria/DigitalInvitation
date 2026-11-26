@@ -3,12 +3,13 @@
 This implementation is an integration milestone. Do not accept live customers until every applicable gate is completed and signed off.
 
 ## Code and automated verification
-- [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test and Docker Compose validation passed in GitHub Actions run #234 on the current stabilization changes.
+- [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test, Nginx configuration validation and Docker Compose validation passed in recent GitHub Actions runs; the latest commit is being rechecked.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
 - [x] Add configurable per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
 - [x] Add PostgreSQL-backed test proving an access JWT is rejected immediately after the user's auth version changes.
-- [ ] Add integration tests for refresh-token expiry/replay, suspended accounts, password-reset invalidation and multi-tab rotation.
+- [x] Add PostgreSQL-backed test for refresh-token rotation, HttpOnly cookie issuance and replay-triggered session-family revocation.
+- [ ] Add browser multi-tab rotation, suspended-account and password-reset invalidation tests.
 - [x] Add public RSVP throttling per publication/client and scheduled cleanup of expired throttle buckets.
 - [x] Add PostgreSQL-backed cross-user invitation detail test and verify the publication row-lock query.
 - [ ] Extend cross-user IDOR tests to every order, media and payment endpoint.
@@ -19,6 +20,7 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Add lifecycle tests for leap days, midnight boundaries, last-function date changes and purchase-time configuration snapshots.
 - [ ] Add tests for policy version changes and consent invalidation after content changes.
 - [x] Add owner-scoped media deletion and no-store cache headers for private/public media delivery.
+- [x] Add owner-scoped media deletion and no-store cache headers for private/public media.
 - [ ] Add upload malware/content scanning, decompression bomb limits, image dimension limits and storage cleanup tests.
 - [ ] Run SAST, dependency, container and secret scans; perform independent penetration testing.
 
@@ -30,7 +32,8 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Configure provider secrets using a secret manager.
 
 ## Operations
-- [ ] TLS, HSTS, CSP, strict CORS, rate limiting and request-size limits.
+- [x] Add frontend CSP, HSTS, clickjacking, MIME-sniffing and referrer-policy headers, API request throttling, upload size ceiling and Nginx configuration validation.
+- [ ] Verify TLS termination, strict CORS allowlist, proxy trust configuration and production security headers.
 - [ ] Database encryption/backups, point-in-time recovery and restore drill.
 - [ ] Storage retention, deletion and orphan cleanup.
 - [ ] Monitoring, alerting, structured logs, correlation IDs and error tracking.
@@ -45,7 +48,7 @@ This implementation is an integration milestone. Do not accept live customers un
 - FileServer adapter paths are configurable but not verified against the deployed upload/delete contract. Customer media now has owner-scoped deletion; orphan reconciliation and storage deletion retries remain.
 - Razorpay is the first concrete payment adapter; other providers and provider selection are not implemented. Checkout retry/idempotency and captured-payment settlement are implemented but still require provider sandbox and concurrency tests.
 - Configurable percentage tax, extension orders/settlement and purchase-time pricing/expiry snapshots are implemented in the current branch; coupons, invoice generation, refund administration and payment reconciliation UI are not complete.
-- Basic configurable RSVP capture, owner-only response listing and per-publication/client rate limiting are implemented; attendee management, invitation analytics and full calendar/localization rendering remain.
+- Basic configurable RSVP capture, owner-only response listing, per-publication/client rate limiting and owner-only CSV export are implemented; full attendee management, invitation analytics and calendar/localization rendering remain.
 - Admin dashboard is a first control surface; full user/support/role management, admin MFA and audit search UI remain.
 - UI end-to-end, accessibility, browser, mobile, load and security testing remain.
 
