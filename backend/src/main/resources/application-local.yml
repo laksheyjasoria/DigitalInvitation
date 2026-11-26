@@ -7,13 +7,15 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 2
       connection-timeout: 30000
+server:
+  port: ${BACKEND_PORT:8081}
 logging:
   level:
     root: INFO
     org.springframework.security: INFO
 
 app:
-  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8081}
   security:
     jwt:
       # Local-development secret only. Production profile requires an externally supplied secret.
