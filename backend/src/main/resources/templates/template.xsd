@@ -16,12 +16,14 @@
                       <xs:attribute name="required" type="xs:boolean" use="optional" default="false"/>
                       <xs:attribute name="optional" type="xs:boolean" use="optional" default="false"/>
                       <xs:attribute name="repeatable" type="xs:boolean" use="optional" default="false"/>
+                      <xs:attribute name="placeholder" type="xs:string" use="optional"/>
                     </xs:complexType>
                   </xs:element>
                 </xs:sequence>
                 <xs:attribute name="key" type="xs:NCName" use="required"/>
                 <xs:attribute name="label" type="xs:string" use="required"/>
                 <xs:attribute name="optional" type="xs:boolean" use="optional" default="false"/>
+                <xs:attribute name="repeatable" type="xs:boolean" use="optional" default="false"/>
               </xs:complexType>
             </xs:element>
           </xs:sequence></xs:complexType>
