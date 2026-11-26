@@ -35,13 +35,13 @@
     policy.content = "default-src 'none'; img-src data: blob:; font-src data: blob:; style-src 'unsafe-inline' data:; script-src 'unsafe-inline' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'; media-src data: blob:";
     doc.head.prepend(policy);
 
-    const style = doc.createElement("style");
-    style.textContent = replaceAssetReferences(preview.css || "", preview.assets).replace(/<\/style/gi, "<\\/style");
-    bootstrap.after(style);
-
     const bootstrap = doc.createElement("script");
     bootstrap.textContent = "window.digitalInvitationPreviewData=" + scriptSafeJson(snapshot) + ";";
     policy.after(bootstrap);
+
+    const style = doc.createElement("style");
+    style.textContent = replaceAssetReferences(preview.css || "", preview.assets).replace(/<\\/style/gi, "<\\\\/style");
+    bootstrap.after(style);
 
     if (preview.js) {
       const script = doc.createElement("script");
