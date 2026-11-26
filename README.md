@@ -14,7 +14,7 @@ This is a test-ready development milestone, not a declaration of production laun
 
 ## Starter template catalogue
 
-Migration `V14` automatically seeds twelve sample designs across all current categories:
+Migration `V14` automatically seeds twelve sample designs across all current categories; migration `V15` safely repairs missing sample version rows if an earlier draft of the seed migration was already applied:
 
 | Category | Sample designs |
 |---|---|
