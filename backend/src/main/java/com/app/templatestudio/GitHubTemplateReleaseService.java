@@ -30,7 +30,7 @@ public class GitHubTemplateReleaseService {
             @Value("${APP_GITHUB_TOKEN:}") String token,
             @Value("${APP_GITHUB_REPOSITORY:laksheyjasoria/DigitalInvitation}") String repository,
             @Value("${APP_GITHUB_TEMPLATE_RELEASE_BRANCH:template-releases}") String branch,
-            @Value("${APP_GITHUB_TEMPLATE_BASE_BRANCH:main}") String baseBranch,
+            @Value("${APP_GITHUB_TEMPLATE_BASE_BRANCH:feature/platform-implementation}") String baseBranch,
             @Value("${APP_GITHUB_API_BASE:https://api.github.com}") String apiBase,
             @Value("${APP_GITHUB_TEMPLATE_RELEASES_ENABLED:false}") boolean enabled) {
         this.mapper = mapper;
