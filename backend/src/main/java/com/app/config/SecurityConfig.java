@@ -23,7 +23,11 @@ public class SecurityConfig {
             .exceptionHandling(e -> e.authenticationEntryPoint(new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                .requestMatchers("/api/v1/auth/**", "/api/v1/webhooks/**").permitAll()
+                .requestMatchers(HttpMethod.POST,
+                    "/api/v1/auth/register", "/api/v1/auth/verify-email", "/api/v1/auth/login",
+                    "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
+                    "/api/v1/auth/refresh", "/api/v1/auth/logout",
+                    "/api/v1/webhooks/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/**", "/api/v1/catalog/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/public/invitations/*/rsvp").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN","SUPER_ADMIN")
