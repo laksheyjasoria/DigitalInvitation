@@ -4,6 +4,12 @@ const safe = value => String(value ?? "").replace(/[&<>"']/g, character => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[character]));
 
+window.addEventListener("message", event => {
+  const frame = $("invitation-render")?.querySelector("iframe");
+  if (!frame || event.source !== frame.contentWindow || event.data?.type !== "di-template-resize") return;
+  frame.style.height = Math.max(520, Math.min(5000, Number(event.data.height) || 760)) + "px";
+});
+
 const translations = {
   en: {
     eyebrow: "YOU ARE WARMLY INVITED", rsvpTitle: "Will you be joining us?",
