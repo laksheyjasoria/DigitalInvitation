@@ -50,6 +50,7 @@ jobs:
           node --check frontend/app.js
           node --check frontend/admin.js
           node --check frontend/invitation.js
+          node --check frontend/invitation-renderer.js
           node --check frontend/verify.js
           node --check frontend/forgot.js
           node --check frontend/reset.js
