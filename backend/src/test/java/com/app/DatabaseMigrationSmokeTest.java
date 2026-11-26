@@ -358,6 +358,59 @@ class DatabaseMigrationSmokeTest {
     }
 
     @Test
+    void superAdminCanInviteSupportAndSupportIsReadOnly() throws Exception {
+        java.util.UUID superAdminId = java.util.UUID.randomUUID();
+        String superAdminEmail = "super-admin-" + superAdminId + "@example.test";
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'CI Super Admin','SUPER_ADMIN','ACTIVE')",
+                superAdminId, superAdminEmail, "not-used");
+        String superAdminToken = jwtService.issue(superAdminId.toString(), superAdminEmail, "SUPER_ADMIN", 0);
+        String invitedEmail = "support-" + superAdminId + "@example.test";
+
+        var created = mockMvc.perform(post("/api/v1/admin/invites")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("email", invitedEmail, "role", "SUPPORT"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String inviteUrl = objectMapper.readTree(created.getResponse().getContentAsString())
+                .path("data").path("inviteUrl").asText();
+        String rawToken = inviteUrl.substring(inviteUrl.indexOf("token=") + 6);
+        String tokenHash = java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256")
+                        .digest(rawToken.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertEquals(tokenHash, jdbc.queryForObject(
+                "SELECT token_hash FROM admin_invite WHERE lower(email)=?", String.class, invitedEmail));
+
+        var accepted = mockMvc.perform(post("/api/v1/auth/accept-admin-invite")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "token", rawToken, "password", "GoodPass1!", "displayName", "CI Support"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value("SUPPORT"))
+                .andReturn();
+        java.util.UUID supportId = java.util.UUID.fromString(
+                objectMapper.readTree(accepted.getResponse().getContentAsString()).path("data").path("userId").asText());
+        assertEquals("ACTIVE", jdbc.queryForObject("SELECT status FROM app_user WHERE id=?", String.class, supportId));
+        assertTrue(jdbc.queryForObject("SELECT consumed_at IS NOT NULL FROM admin_invite WHERE lower(email)=?",
+                Boolean.class, invitedEmail));
+
+        String supportToken = jwtService.issue(supportId.toString(), invitedEmail, "SUPPORT", 0);
+        mockMvc.perform(get("/api/v1/admin/template-studio/packages")
+                        .header("Authorization", "Bearer " + supportToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/admin/invites")
+                        .header("Authorization", "Bearer " + supportToken)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("email", "another@example.test", "role", "ADMIN"))))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/auth/accept-admin-invite")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "token", rawToken, "password", "GoodPass1!", "displayName", "Replay"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void flywayCreatesCorePlatformTables() {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM information_schema.tables " +
