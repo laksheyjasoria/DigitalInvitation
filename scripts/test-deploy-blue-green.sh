@@ -28,6 +28,10 @@ if [[ "$1" == "compose" && "$*" == *"nginx -s reload"* && "${DOCKER_FAIL_NGINX_R
   echo "simulated nginx reload failure" >&2
   exit 1
 fi
+if [[ "$1" == "compose" && "$*" == *"actuator/health"* && "${DOCKER_FAIL_HTTP_SMOKE:-0}" == "1" ]]; then
+  echo "simulated Nginx smoke test failure" >&2
+  exit 1
+fi
 exit 0
 DOCKER
   chmod +x "$dir/bin/docker"
@@ -75,4 +79,20 @@ if (
   exit 1
 fi
 grep -q "digital-invitation-backend-blue" "$HEALTH_FAILURE/deploy/nginx/upstream.conf"
+
+HTTP_FAILURE="$TMP/http-failure"
+make_fixture "$HTTP_FAILURE"
+if (
+  cd "$HTTP_FAILURE"
+  PATH="$HTTP_FAILURE/bin:$PATH" \
+  DI_ENV_FILE="$HTTP_FAILURE/production.env" \
+  DOCKER_CALL_LOG="$HTTP_FAILURE/docker.log" \
+  DOCKER_FAIL_HTTP_SMOKE=1 \
+  bash "$SCRIPT" "test-image-sha"
+); then
+  echo "Expected Nginx HTTP smoke test failure did not fail deployment" >&2
+  exit 1
+fi
+grep -q "digital-invitation-backend-blue" "$HTTP_FAILURE/deploy/nginx/upstream.conf"
+grep -q "actuator/health" "$HTTP_FAILURE/docker.log"
 echo "Blue-green deployment switch and rollback tests passed."
