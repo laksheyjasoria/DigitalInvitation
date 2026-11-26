@@ -188,13 +188,15 @@ public class InvitationController {
                         boolean populated=saved!=null&&hasText(saved.path("values").path(fieldKey));
                         com.fasterxml.jackson.databind.JsonNode items=saved==null?null:saved.path("items");
                         if(!populated&&items!=null&&items.isArray()&&!items.isEmpty()){
+                            boolean anyPopulatedRow=false;
                             populated=true;
                             for(com.fasterxml.jackson.databind.JsonNode item:items){
                                 boolean rowHasAny=false;
                                 var fields=item.fields();
                                 while(fields.hasNext()){var entry=fields.next();if(hasText(entry.getValue())){rowHasAny=true;break;}}
-                                if(rowHasAny&&!hasText(item.path(fieldKey))){populated=false;break;}
+                                if(rowHasAny){anyPopulatedRow=true;if(!hasText(item.path(fieldKey))){populated=false;break;}}
                             }
+                            populated=populated&&anyPopulatedRow;
                         }
                         if(!populated)throw new IllegalArgumentException("Complete the required field '"+fieldKey+"' in "+section.path("label").asText(key));
                     }
