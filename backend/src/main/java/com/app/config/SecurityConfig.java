@@ -27,7 +27,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/index.html", "/site.css", "/home.js", "/app.html", "/app.css", "/app.js",
                     "/invitation.html", "/invitation.js", "/invitation-renderer.js", "/forgot.html", "/forgot.js", "/reset.html", "/reset.js",
                     "/verify.html", "/verify.js", "/admin.html", "/admin.js", "/template-studio.html", "/template-studio.js",
-                    "/template-preview-frame.html", "/template-preview-frame.js", "/template-package-renderer.js", "/favicon.ico", "/i/**").permitAll()
+                    "/template-preview-frame.html", "/template-preview-frame.js", "/template-package-renderer.js", "/admin-invite.html", "/admin-invite.js", "/favicon.ico", "/i/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/auth/register", "/api/v1/auth/verify-email", "/api/v1/auth/login",
