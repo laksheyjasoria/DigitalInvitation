@@ -1,3 +1,23 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Floral Garden</title><link rel="stylesheet" href="styles.css"></head>
-<body><main class="invitation"><div class="ornament" aria-hidden="true">✿</div><p class="eyebrow">YOU ARE INVITED</p><h1 data-field="headline">With joyful hearts</h1><p data-field="hostNames">The Sharma Family</p><div class="rule"></div><p data-field="eventDate">14 February 2027</p><p data-field="eventTime">6:00 PM</p><p data-field="venue">Garden Palace, Hisar</p><div class="ornament" aria-hidden="true">✿</div></main><script src="script.js"></script></body></html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Floral Garden</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<main class="invitation">
+  <div class="ornament" aria-hidden="true">✿</div>
+  <p class="eyebrow">YOU ARE INVITED</p>
+  <h1 data-field="headline">With joyful hearts</h1>
+  <p data-field="hostNames">The Sharma Family</p>
+  <div class="rule"></div>
+  <p class="event-date" data-field="eventDate">14 February 2027</p>
+  <p data-field="eventTime">6:00 PM</p>
+  <p data-field="venue">Garden Palace, Hisar</p>
+  <section class="functions" data-section-key="functions">
+    <h2>Celebration schedule</h2>
+    <div data-repeat="functions">
+      <template><article class="function"><h3 data-field="functionName">Function</h3><p data-field="functionDate">Date</p><p data-field="functionTime">Time</p><p data-field="functionVenue">Venue</p></article></template>
+    </div>
+  </section>
+  <div class="ornament" aria-hidden="true">✿</div>
+</main>
+<script src="script.js"></script>
+</body></html>
