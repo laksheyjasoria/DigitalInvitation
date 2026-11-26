@@ -26,6 +26,9 @@ This implementation is an integration milestone. Do not accept live customers un
 ## Integrations
 
 - [x] Implement DigitalInvitation's FileServer Master Drive adapter using the `X-Master-Key` header, configurable root drive ID/name, asynchronous upload completion polling, download and soft-delete routes.
+- [x] Add admin category listing/enablement, template listing/status changes and immutable template version creation APIs with audit events.
+- [x] Add customer-side private image gallery upload/list/delete/visibility controls and English/Hindi locale selection with Hindi RSVP labels.
+- [x] Defer payment requirement by default with migration V13; checkout remains disabled until provider setup and an explicit admin configuration change.
 - [ ] Deploy/merge FileServer's `feature/master-drive-storage-api` branch into the actual FileServer environment used by DigitalInvitation.
 - [ ] Create/configure the dedicated Master Drive root (default name: `DigitalInvitation`) and set its ID or exact name in protected environment variables.
 - [ ] Verify actual Master Drive upload, status polling, download, byte-range streaming, soft-delete, auth, concurrency and failure recovery against the deployed instance.
@@ -53,8 +56,8 @@ This implementation is an integration milestone. Do not accept live customers un
 - DigitalInvitation now targets the FileServer Master Drive API using the server-side `X-Master-Key`. Its upload operation waits for FileServer's asynchronous upload job and persists the returned Master Drive file ID. This code is not proof of a live integration: the compatible FileServer API branch must be deployed, a dedicated root drive configured, and upload/read/range/delete/auth/concurrency/recovery tests completed.
 - Razorpay remains the first payment adapter but is intentionally disabled until later configuration. Never mark an order paid or publish a paid invitation without a verified provider settlement. Provider sandbox and concurrency tests remain.
 - Configurable percentage tax, extension orders/settlement and purchase-time pricing/expiry snapshots are implemented in the current branch; coupons, invoice generation, refund administration and payment reconciliation UI are not complete.
-- Basic configurable RSVP capture, owner-only response listing, per-publication/client rate limiting and owner-only CSV export are implemented; full attendee management, invitation analytics and calendar/localization rendering remain.
-- Admin dashboard is a first control surface; full user/support/role management, admin MFA and audit search UI remain.
+- Basic configurable RSVP capture, owner-only response listing, per-publication/client rate limiting and owner-only CSV export are implemented; full attendee management, invitation analytics and calendar support, additional translated UI languages, and localized date formatting remain.
+- Admin dashboard is a first control surface; full support tooling, admin MFA, role management UX and audit search UI remain.
 - UI end-to-end, accessibility, browser, mobile, load and security testing remain.
 
 Do not describe this milestone as production-ready until this checklist is completed and CI/security/integration tests are green.
