@@ -71,6 +71,16 @@ class DatabaseMigrationSmokeTest {
     }
 
     @Test
+    void userAuthenticationVersionColumnExists() {
+        Integer count = jdbc.queryForObject(
+                "SELECT count(*) FROM information_schema.columns " +
+                "WHERE table_schema='public' AND table_name='app_user' AND column_name='auth_version'",
+                Integer.class);
+        assertTrue(count != null && count == 1,
+                "User authentication version must exist for immediate token revocation");
+    }
+
+    @Test
     void flywayCreatesCorePlatformTables() {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM information_schema.tables " +
