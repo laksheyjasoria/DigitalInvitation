@@ -31,6 +31,7 @@ Authenticated endpoints use Authorization: Bearer <access-token>. Responses use 
 - POST /api/v1/invitations/{id}/publish — publish after payment and consent checks.
 - POST /api/v1/invitations/{id}/extensions/orders — create an extension purchase when enabled.
 - GET /api/v1/invitations/{id}/rsvps — owner-only RSVP responses.
+- GET /api/v1/invitations/{id}/rsvps/export — owner-only CSV export with spreadsheet formula-injection protection.
 - POST /api/v1/public/invitations/{slug}/rsvp — submit an RSVP when enabled.
 - POST /api/v1/invitations/{id}/media — upload private image.
 - GET /api/v1/invitations/{id}/media — list owner's media.
