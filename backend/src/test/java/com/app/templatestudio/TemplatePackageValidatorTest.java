@@ -22,6 +22,13 @@ class TemplatePackageValidatorTest {
     }
 
     @Test
+    void rejectsUnsafeTemplatePackageVersion() {
+        String unsafe = definition().replace("version=\\"1.0.0\\"", "version=\\"../latest\\"");
+        assertThrows(IllegalArgumentException.class,
+                () -> validator.validate(packageZip(unsafe, preview(), false)));
+    }
+
+    @Test
     void rejectsArchivePathTraversal() {
         assertThrows(IllegalArgumentException.class,
                 () -> validator.validate(packageZip(definition(), preview(), true)));
