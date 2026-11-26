@@ -1,6 +1,6 @@
 # Sample Invitation Catalogue
 
-Migration `V14__seed_sample_invitation_templates.sql` installs twelve demonstration templates into the normal catalogue. They are published sample definitions, not one-off UI mocks, so they can be selected through the same category/template APIs used by customer-created invitations.
+Migration `V14__seed_sample_invitation_templates.sql` installs twelve demonstration templates into the normal catalogue. Migration `V15__repair_sample_template_versions.sql` is an idempotent compatibility repair for databases that may have applied the initial V14 draft before its version-row insert was corrected. They are published sample definitions, not one-off UI mocks, so they can be selected through the same category/template APIs used by customer-created invitations.
 
 ## Included designs
 
