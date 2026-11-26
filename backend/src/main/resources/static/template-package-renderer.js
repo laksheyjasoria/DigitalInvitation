@@ -48,6 +48,9 @@
       script.textContent = String(preview.js).replace(/<\/script/gi, "<\\/script");
       doc.body.append(script);
     }
+    const resize = doc.createElement("script");
+    resize.textContent = "(()=>{const send=()=>parent.postMessage({type:'di-template-resize',height:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)},'*');new ResizeObserver(send).observe(document.documentElement);window.addEventListener('load',send);send();})();";
+    doc.body.append(resize);
     return "<!doctype html>" + doc.documentElement.outerHTML;
   }
 
