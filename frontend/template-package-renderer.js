@@ -24,7 +24,7 @@
 
     document.querySelectorAll("[data-section-key]").forEach(node => {
       const section = sectionByKey(node.dataset.sectionKey);
-      if (section && section.enabled === false) node.remove();
+      if (!section || section.enabled === false) node.remove();
     });
 
     document.querySelectorAll("[data-repeat]").forEach(container => {
