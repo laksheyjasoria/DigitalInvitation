@@ -50,26 +50,12 @@ function renderCategories(rows){
   catch(e){msg(e.message);}
  }));
 }
-const templateDefinitions=new Map();
 function renderTemplates(rows){
- templateDefinitions.clear();
- $("templates").innerHTML=rows.map(t=>{
-  try{templateDefinitions.set(t.id,JSON.parse(t.definition||"{}"));}catch(_){templateDefinitions.set(t.id,{});}
-  return '<article class="setting-row"><strong>'+escapeHtml(t.display_name)+'</strong> · '+escapeHtml(t.category_name)+' · '+escapeHtml(t.template_key)+
-   ' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+
-   '<div class="button-row"><button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Publish")+'</button>'+
-   '<button class="quiet" data-template-version="'+t.id+'">Create new version</button></div></article>';
- }).join("");
+ $("templates").innerHTML=rows.map(t=>'<article class="setting-row"><strong>'+escapeHtml(t.display_name)+'</strong> · '+escapeHtml(t.category_name)+' · '+escapeHtml(t.template_key)+
+  ' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+
+  '<div class="button-row"><button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Publish")+'</button></div></article>').join("");
  document.querySelectorAll("[data-template-status]").forEach(b=>b.addEventListener("click",async()=>{
   try{await api("/admin/templates/"+b.dataset.templateStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});msg("Template status updated.");await load();}
-  catch(e){msg(e.message);}
- }));
- document.querySelectorAll("[data-template-version]").forEach(b=>b.addEventListener("click",async()=>{
-  const initial=JSON.stringify(templateDefinitions.get(b.dataset.templateVersion)||{},null,2);
-  const entered=prompt("Edit template definition JSON for the new version:",initial);
-  if(entered===null)return;
-  let definition;try{definition=JSON.parse(entered);}catch(_){msg("Invalid JSON. No version was created.");return;}
-  try{const result=await api("/admin/templates/"+b.dataset.templateVersion+"/versions",{method:"POST",body:JSON.stringify({definition})});msg("Created template version "+result.versionNumber+".");await load();}
   catch(e){msg(e.message);}
  }));
 }
@@ -93,13 +79,6 @@ $("category-form").addEventListener("submit",async e=>{
  e.preventDefault();const data=Object.fromEntries(new FormData(e.target));
  try{await api("/admin/categories",{method:"POST",body:JSON.stringify(data)});msg("Category created.");e.target.reset();await load();}
  catch(err){msg(err.message);}
-});
-$("template-form").addEventListener("submit",async e=>{
- e.preventDefault();
- try{const definition=JSON.parse($("template-definition").value);
-  await api("/admin/templates",{method:"POST",body:JSON.stringify({categoryId:$("template-category").value,key:$("template-key").value,name:$("template-name").value,description:$("template-description").value,definition})});
-  msg("Template created and published.");e.target.reset();await load();
- }catch(err){msg(err.message);}
 });
 $("policy-form").addEventListener("submit",async e=>{
  e.preventDefault();const type=$("policy-type").value;
