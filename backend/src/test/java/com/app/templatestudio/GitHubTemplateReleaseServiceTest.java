@@ -78,11 +78,11 @@ class GitHubTemplateReleaseServiceTest {
 
                 if (path.endsWith("/git/ref/heads/template-releases") && method.equals("GET")) {
                     int call = releaseRefCalls.incrementAndGet();
-                    if (!branchExists) {
+                    if (!branchExists && call == 1) {
                         status = 404;
                         response = "{\"message\":\"Not Found\"}";
                     } else {
-                        String sha = call == 1 ? "release-sha" : "synced-sha";
+                        String sha = branchExists && call == 1 ? "release-sha" : (branchExists ? "synced-sha" : "base-sha");
                         response = "{\"object\":{\"sha\":\"" + sha + "\"}}";
                     }
                 } else if (path.endsWith("/git/ref/heads/main") && method.equals("GET")) {
