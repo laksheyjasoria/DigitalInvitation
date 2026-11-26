@@ -62,16 +62,19 @@ public class PaymentController {
         return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency));
     }
     @org.springframework.transaction.annotation.Transactional
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/extensions/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createExtensionOrder(@PathVariable UUID id,Authentication auth){
         if(!settings.getBoolean("invitation.expiry.extension-enabled"))
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Invitation extensions are not available");
         UUID user=UUID.fromString(auth.getName());
-        var invitation=jdbc.query("SELECT i.status,p.id publication_id,p.revoked_at FROM invitation i JOIN LATERAL (SELECT id,revoked_at FROM invitation_publication WHERE invitation_id=i.id ORDER BY published_at DESC LIMIT 1) p ON true WHERE i.id=? AND i.owner_user_id=?",
+        var invitation=jdbc.query("SELECT i.status,p.id publication_id,p.revoked_at FROM invitation i JOIN LATERAL (SELECT id,revoked_at FROM invitation_publication WHERE invitation_id=i.id ORDER BY published_at DESC LIMIT 1) p ON true WHERE i.id=? AND i.owner_user_id=? FOR UPDATE OF i",
             (rs,n)->Map.of("status",rs.getString("status"),"publicationId",rs.getObject("publication_id",UUID.class),"revoked",rs.getTimestamp("revoked_at")!=null),id,user);
         if(invitation.isEmpty()||Boolean.TRUE.equals(invitation.get(0).get("revoked"))||!java.util.Set.of("PUBLISHED","EXPIRED").contains(invitation.get(0).get("status")))
             throw new IllegalArgumentException("Only published or expired invitations can be extended");
+        Integer pendingExtensions=jdbc.queryForObject("SELECT count(*) FROM customer_order WHERE invitation_id=? AND order_type='EXTENSION' AND status IN ('CREATED','PAYMENT_PENDING')",Integer.class,id);
+        if(pendingExtensions!=null&&pendingExtensions>0)throw new IllegalArgumentException("An invitation extension order is already pending");
         int days=settings.getInt("invitation.expiry.extension-days");long baseAmount=settings.getLong("invitation.expiry.extension-price-minor");
         BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
         if(days<=0||baseAmount<0||taxPercent.compareTo(BigDecimal.ZERO)<0||taxPercent.compareTo(new BigDecimal("100"))>0)throw new IllegalStateException("Configured extension pricing is invalid");
@@ -90,12 +93,12 @@ public class PaymentController {
     @PostMapping("/payments/{orderId}/cancel")
     public ApiResponse<?> cancelOrder(@PathVariable UUID orderId,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
-        var rows=jdbc.query("SELECT invitation_id FROM customer_order WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING') AND NOT EXISTS (SELECT 1 FROM payment_transaction p WHERE p.order_id=customer_order.id)",
-            (rs,n)->rs.getObject("invitation_id",UUID.class),orderId,user);
+        var rows=jdbc.query("SELECT invitation_id,order_type FROM customer_order WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING') AND NOT EXISTS (SELECT 1 FROM payment_transaction p WHERE p.order_id=customer_order.id) FOR UPDATE",
+            (rs,n)->Map.of("invitationId",rs.getObject("invitation_id",UUID.class),"orderType",rs.getString("order_type")),orderId,user);
         if(rows.isEmpty())throw new IllegalArgumentException("Order cannot be cancelled after a provider checkout has been created");
-        jdbc.update("UPDATE customer_order SET status='CANCELLED',updated_at=now() WHERE id=? AND user_id=?",orderId,user);
-        if("INVITATION".equals(jdbc.queryForObject("SELECT order_type FROM customer_order WHERE id=?",String.class,orderId)))
-            jdbc.update("UPDATE invitation SET status='DRAFT',updated_at=now() WHERE id=? AND status='PENDING_PAYMENT'",rows.get(0));
+        jdbc.update("UPDATE customer_order SET status='CANCELLED',updated_at=now() WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING')",orderId,user);
+        if("INVITATION".equals(rows.get(0).get("orderType")))
+            jdbc.update("UPDATE invitation SET status='DRAFT',updated_at=now() WHERE id=? AND status='PENDING_PAYMENT'",rows.get(0).get("invitationId"));
         return ApiResponse.success(Map.of("orderId",orderId,"status","CANCELLED"));
     }
     @org.springframework.transaction.annotation.Transactional
