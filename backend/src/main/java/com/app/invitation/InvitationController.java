@@ -27,6 +27,7 @@ public class InvitationController {
         UUID owner=UUID.fromString(auth.getName());String tz=r.timezone()==null?settings.getString("invitation.default-timezone"):r.timezone();validateTimezone(tz);
         Integer usableTemplate=jdbc.queryForObject("SELECT count(*) FROM invitation_template_version v JOIN invitation_template t ON t.id=v.template_id WHERE v.id=? AND t.status='PUBLISHED' AND v.version_number=t.current_version",Integer.class,r.templateVersionId());
         if(usableTemplate==null||usableTemplate!=1)throw new IllegalArgumentException("Select a currently published invitation template");
+        validateTemplateContent(r.templateVersionId(),r.content()==null?Map.of():r.content());
         UUID id=UUID.randomUUID();
         try{jdbc.update("INSERT INTO invitation(id,owner_user_id,template_version_id,title,content,last_function_date,timezone) VALUES (?,?,?,?,?::jsonb,?,?)",id,owner,r.templateVersionId(),r.title().trim(),mapper.writeValueAsString(r.content()==null?Map.of():r.content()),r.lastFunctionDate(),tz);}
         catch(Exception e){throw new IllegalArgumentException("Unable to create invitation. Verify the selected template and event date.");}
@@ -48,6 +49,7 @@ public class InvitationController {
         Boolean sameTemplate=jdbc.query("SELECT template_version_id=? FROM invitation WHERE id=? AND owner_user_id=?",rs->rs.next()?rs.getBoolean(1):null,requestedTemplate,id,owner);
         Integer usableTemplate=jdbc.queryForObject("SELECT count(*) FROM invitation_template_version v JOIN invitation_template t ON t.id=v.template_id WHERE v.id=? AND t.status='PUBLISHED' AND v.version_number=t.current_version",Integer.class,requestedTemplate);
         if(!Boolean.TRUE.equals(sameTemplate)&&(usableTemplate==null||usableTemplate!=1))throw new IllegalArgumentException("Select a currently published invitation template");
+        validateTemplateContent(requestedTemplate,content==null?Map.of():content);
         try{int n=jdbc.update("UPDATE invitation SET title=?,content=?::jsonb,template_version_id=?,last_function_date=?,timezone=?,status='DRAFT',updated_at=now(),version=version+1 WHERE id=? AND owner_user_id=? AND (status='DRAFT' OR (status='PENDING_PAYMENT' AND NOT EXISTS (SELECT 1 FROM customer_order o WHERE o.invitation_id=invitation.id AND o.status IN ('CREATED','PAYMENT_PENDING','PAID'))))",title.trim(),mapper.writeValueAsString(content==null?Map.of():content),requestedTemplate,body.get("lastFunctionDate")==null?null:LocalDate.parse(String.valueOf(body.get("lastFunctionDate"))),requestedTimezone,id,owner);if(n==0)throw new IllegalArgumentException("Invitation not found or cannot be edited in its current state");}
         catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid invitation content");}
         return ApiResponse.success(Map.of("id",id,"status","DRAFT"));
@@ -92,6 +94,7 @@ public class InvitationController {
             },id,user);
         if(rows.isEmpty())throw new IllegalArgumentException("Invitation not found");
         var inv=rows.get(0);
+        validateTemplateContent((UUID)inv.get("templateVersionId"),inv.get("content"));
         if("PUBLISHED".equals(inv.get("status"))&&!inv.get("publicSlug").toString().isBlank())
             return ApiResponse.success(Map.of("slug",inv.get("publicSlug"),"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+inv.get("publicSlug"),"expiresAt",inv.get("expiresAt")));
         if("EXPIRED".equals(inv.get("status"))||"SUSPENDED".equals(inv.get("status"))||"DELETED".equals(inv.get("status")))
@@ -158,6 +161,45 @@ public class InvitationController {
         }catch(Exception e){throw new IllegalArgumentException("Unable to publish invitation");}
         audit.record(user,"INVITATION_PUBLISHED","INVITATION",id.toString(),"SUCCESS",Map.of("publicationSlug",slug,"expiresAt",expiry.toString(),"graceDays",grace));
         return ApiResponse.success(Map.of("slug",slug,"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+slug,"expiresAt",expiry.toString()));
+    }
+    private void validateTemplateContent(UUID templateVersionId,Object rawContent){
+        try{
+            String definition=jdbc.queryForObject("SELECT definition::text FROM invitation_template_version WHERE id=?",String.class,templateVersionId);
+            com.fasterxml.jackson.databind.JsonNode template=mapper.readTree(definition);
+            com.fasterxml.jackson.databind.JsonNode content;
+            if(rawContent instanceof String value)content=mapper.readTree(value);else content=mapper.valueToTree(rawContent==null?Map.of():rawContent);
+            com.fasterxml.jackson.databind.JsonNode savedSections=content.path("sections");
+            for(com.fasterxml.jackson.databind.JsonNode section:template.path("sections")){
+                String key=section.path("key").asText("");
+                if(key.isBlank())continue;
+                com.fasterxml.jackson.databind.JsonNode saved=null;
+                if(savedSections.isArray())for(com.fasterxml.jackson.databind.JsonNode candidate:savedSections){
+                    if(key.equals(candidate.path("key").asText())){saved=candidate;break;}
+                }
+                boolean requiredSection=section.path("required").asBoolean(false);
+                boolean enabled=saved==null?section.path("enabled").asBoolean(true):saved.path("enabled").asBoolean(true);
+                if(requiredSection&&!enabled)throw new IllegalArgumentException("This template requires the section: "+section.path("label").asText(key));
+                if(!enabled)continue;
+                com.fasterxml.jackson.databind.JsonNode requiredFields=section.path("requiredFields");
+                if(requiredFields.isArray()){
+                    for(com.fasterxml.jackson.databind.JsonNode field:requiredFields){
+                        String fieldKey=field.asText("");
+                        if(fieldKey.isBlank())continue;
+                        boolean populated=saved!=null&&hasText(saved.path("values").path(fieldKey));
+                        com.fasterxml.jackson.databind.JsonNode items=saved==null?null:saved.path("items");
+                        if(!populated&&items!=null&&items.isArray())for(com.fasterxml.jackson.databind.JsonNode item:items)if(hasText(item.path(fieldKey))){populated=true;break;}
+                        if(!populated)throw new IllegalArgumentException("Complete the required field '"+fieldKey+"' in "+section.path("label").asText(key));
+                    }
+                }else if(requiredSection){
+                    boolean populated=saved!=null&&saved.path("values").isObject()&&saved.path("values").fields().hasNext();
+                    if(!populated)throw new IllegalArgumentException("Complete the required section: "+section.path("label").asText(key));
+                }
+            }
+        }catch(IllegalArgumentException e){throw e;}
+        catch(Exception e){throw new IllegalArgumentException("Unable to validate invitation fields against the selected template");}
+    }
+    private boolean hasText(com.fasterxml.jackson.databind.JsonNode value){
+        return value!=null&&!value.isMissingNode()&&!value.isNull()&&!value.asText("").isBlank();
     }
     private void validateTimezone(String timezone){
         if(timezone==null||timezone.isBlank()||!settings.getStringList("invitation.supported-timezones").contains(timezone))
