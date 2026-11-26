@@ -2,7 +2,7 @@ name: Platform CI
 
 on:
   push:
-    branches: ["feature/platform-implementation"]
+    branches: ["feature/platform-implementation","feature/xml-template-engine"]
     paths: ["backend/**","frontend/**","docker-compose.yml","docker-compose.eclipse.yml",".github/workflows/backend-ci.yml"]
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -45,7 +45,7 @@ jobs:
           java-version: "21"
           cache: maven
           cache-dependency-path: backend/pom.xml
-      - name: Check frontend JavaScript syntax
+      - name: Check frontend and template JavaScript syntax
         run: |
           node --check frontend/app.js
           node --check frontend/admin.js
@@ -54,6 +54,7 @@ jobs:
           node --check backend/src/main/resources/static/app.js
           node --check backend/src/main/resources/static/invitation.js
           node --check backend/src/main/resources/static/invitation-renderer.js
+          find backend/src/main/resources/templates -name '*.js' -type f -print0 | xargs -0 -r -n1 node --check
           cmp frontend/app.html backend/src/main/resources/static/app.html
           cmp frontend/app.js backend/src/main/resources/static/app.js
           cmp frontend/app.css backend/src/main/resources/static/app.css

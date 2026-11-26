@@ -55,10 +55,13 @@ function renderTemplates(rows){
  templateDefinitions.clear();
  $("templates").innerHTML=rows.map(t=>{
   try{templateDefinitions.set(t.id,JSON.parse(t.definition||"{}"));}catch(_){templateDefinitions.set(t.id,{});}
+  const isXml=t.definition_format==="XML_PACKAGE";
+  const packageRef=String(t.package_path||"").split("/").pop();
+  const preview=isXml&&packageRef?'<a class="quiet" target="_blank" rel="noopener" href="/template-preview/'+escapeHtml(packageRef)+'">Preview package</a>':"";
+  const versionAction=isXml?'<small class="muted">Immutable XML package · release through the template deployment pipeline</small>':'<button class="quiet" data-template-version="'+t.id+'">Create new version</button>';
   return '<article class="setting-row"><strong>'+escapeHtml(t.display_name)+'</strong> · '+escapeHtml(t.category_name)+' · '+escapeHtml(t.template_key)+
-   ' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+
-   '<div class="button-row"><button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Publish")+'</button>'+
-   '<button class="quiet" data-template-version="'+t.id+'">Create new version</button></div></article>';
+   ' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+' · '+(isXml?'XML package':'JSON definition')+
+   '<div class="button-row"><button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Publish")+'</button>'+preview+versionAction+'</div></article>';
  }).join("");
  document.querySelectorAll("[data-template-status]").forEach(b=>b.addEventListener("click",async()=>{
   try{await api("/admin/templates/"+b.dataset.templateStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});msg("Template status updated.");await load();}

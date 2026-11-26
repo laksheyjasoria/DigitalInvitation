@@ -81,7 +81,7 @@ public class AdminCatalogController {
         return ApiResponse.success(jdbc.queryForList(
                 "SELECT t.id,t.category_id,c.display_name AS category_name,t.template_key,t.display_name," +
                 "t.description,t.status,t.current_version,v.id AS template_version_id,v.definition::text AS definition," +
-                "t.updated_at FROM invitation_template t JOIN event_category c ON c.id=t.category_id " +
+                "v.definition_format,v.package_path,t.updated_at FROM invitation_template t JOIN event_category c ON c.id=t.category_id " +
                 "LEFT JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
                 "ORDER BY c.sort_order,t.display_name"));
     }
@@ -120,10 +120,12 @@ public class AdminCatalogController {
                                      Authentication auth) {
         Object definition = body.get("definition");
         if (!(definition instanceof Map)) throw new IllegalArgumentException("Template definition must be a JSON object");
-        var rows = jdbc.query("SELECT current_version FROM invitation_template WHERE id=? FOR UPDATE",
-                (rs, n) -> rs.getInt(1), id);
+        var rows = jdbc.query("SELECT t.current_version,v.definition_format FROM invitation_template t JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version WHERE t.id=? FOR UPDATE OF t",
+                (rs, n) -> Map.of("version",rs.getInt(1),"format",rs.getString(2)), id);
         if (rows.isEmpty()) throw new IllegalArgumentException("Template not found");
-        int next = rows.get(0) + 1;
+        if ("XML_PACKAGE".equals(rows.get(0).get("format")))
+            throw new IllegalArgumentException("XML template versions must be released as a new immutable classpath package");
+        int next = (Integer) rows.get(0).get("version") + 1;
         UUID version = UUID.randomUUID();
         UUID actor = UUID.fromString(auth.getName());
         try {

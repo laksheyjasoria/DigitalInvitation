@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="template">
+    <xs:complexType><xs:sequence>
+      <xs:element name="fields"><xs:complexType><xs:sequence>
+        <xs:element name="field" minOccurs="1" maxOccurs="unbounded"><xs:complexType>
+          <xs:attribute name="key" type="xs:string" use="required"/>
+          <xs:attribute name="label" type="xs:string" use="required"/>
+          <xs:attribute name="type" type="xs:string" use="required"/>
+          <xs:attribute name="required" type="xs:boolean" default="false"/>
+          <xs:attribute name="editable" type="xs:boolean" default="true"/>
+          <xs:attribute name="removable" type="xs:boolean" default="false"/>
+          <xs:attribute name="placeholder" type="xs:string"/>
+        </xs:complexType></xs:element>
+      </xs:sequence></xs:complexType></xs:element>
+      <xs:element name="sections"><xs:complexType><xs:sequence>
+        <xs:element name="section" minOccurs="1" maxOccurs="unbounded"><xs:complexType><xs:sequence>
+          <xs:element name="field" minOccurs="1" maxOccurs="unbounded"><xs:complexType>
+            <xs:attribute name="ref" type="xs:string" use="required"/>
+          </xs:complexType></xs:element>
+        </xs:sequence>
+          <xs:attribute name="key" type="xs:string" use="required"/>
+          <xs:attribute name="label" type="xs:string" use="required"/>
+          <xs:attribute name="required" type="xs:boolean" default="false"/>
+          <xs:attribute name="enabled" type="xs:boolean" default="true"/>
+          <xs:attribute name="repeatable" type="xs:boolean" default="false"/>
+        </xs:complexType></xs:element>
+      </xs:sequence></xs:complexType></xs:element>
+    </xs:sequence>
+      <xs:attribute name="id" type="xs:string" use="required"/>
+      <xs:attribute name="displayName" type="xs:string" use="required"/>
+      <xs:attribute name="category" type="xs:string" use="required"/>
+      <xs:attribute name="description" type="xs:string" use="required"/>
+      <xs:attribute name="version" type="xs:string" use="required"/>
+      <xs:attribute name="layout" type="xs:string" use="required"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
