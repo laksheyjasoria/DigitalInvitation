@@ -17,6 +17,8 @@ class TemplateDefinitionMapperTest {
         assertEquals("TEMP0000001", definition.get("templateId"));
         var sections = (java.util.List<?>) definition.get("sections");
         assertTrue((Boolean) ((Map<?, ?>) sections.get(0)).get("required"));
+        var heroFields = (java.util.List<?>) ((Map<?, ?>) sections.get(0)).get("fields");
+        assertTrue((Boolean) ((Map<?, ?>) heroFields.get(1)).get("optional"));
         assertFalse((Boolean) ((Map<?, ?>) sections.get(1)).get("required"));
         Map<?, ?> sample = (Map<?, ?>) ((java.util.List<?>) ((Map<?, ?>) result.get("sampleContent")).get("sections")).get(0);
         assertEquals("Join us", ((Map<?, ?>) sample.get("values")).get("headline"));
