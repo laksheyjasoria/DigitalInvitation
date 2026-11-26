@@ -28,18 +28,21 @@ public class TemplateStudioController {
     private final TemplatePackageValidator validator;
     private final AuditLogService audit;
     private final TemplateDefinitionMapper definitionMapper;
+    private final GitHubTemplateReleaseService releaseService;
 
-    public TemplateStudioController(JdbcTemplate jdbc, TemplatePackageValidator validator, AuditLogService audit, TemplateDefinitionMapper definitionMapper) {
+    public TemplateStudioController(JdbcTemplate jdbc, TemplatePackageValidator validator, AuditLogService audit,
+                                    TemplateDefinitionMapper definitionMapper, GitHubTemplateReleaseService releaseService) {
         this.jdbc = jdbc;
         this.validator = validator;
         this.audit = audit;
         this.definitionMapper = definitionMapper;
+        this.releaseService = releaseService;
     }
 
     @GetMapping("/packages")
     public ApiResponse<?> packages() {
         return ApiResponse.success(jdbc.queryForList(
-                "SELECT id,template_id,template_name,package_version,status,file_count,expanded_bytes,sha256,uploaded_by,created_at,validated_at " +
+                "SELECT id,template_id,template_name,package_version,status,file_count,expanded_bytes,sha256,uploaded_by,created_at,validated_at,release_commit_sha,release_resource_path,released_template_version_id " +
                 "FROM template_package_stage ORDER BY created_at DESC"));
     }
 
@@ -152,6 +155,101 @@ public class TemplateStudioController {
         return ApiResponse.success(Map.of("id", id, "templateId", result.templateId(), "name", result.templateName(),
                 "version", result.version(), "status", "VALIDATED", "fileCount", result.fileCount(),
                 "expandedBytes", result.expandedBytes(), "sha256", result.sha256()));
+    }
+
+    @PostMapping("/packages/{id}/publish")
+    @Transactional
+    public ApiResponse<?> publish(@PathVariable UUID id, @RequestBody Map<String, Object> body,
+                                  Authentication authentication) throws Exception {
+        UUID actor = UUID.fromString(authentication.getName());
+        UUID categoryId;
+        try {
+            categoryId = UUID.fromString(String.valueOf(body.get("categoryId")));
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Choose the invitation category before publishing");
+        }
+
+        var staged = jdbc.query(
+                "SELECT template_id,template_name,package_version,archive_bytes,sha256,status FROM template_package_stage WHERE id=? FOR UPDATE",
+                (rs, row) -> new java.util.HashMap<String, Object>() {{
+                    put("templateId", rs.getString("template_id"));
+                    put("name", rs.getString("template_name"));
+                    put("packageVersion", rs.getString("package_version"));
+                    put("archive", rs.getBytes("archive_bytes"));
+                    put("sha256", rs.getString("sha256"));
+                    put("status", rs.getString("status"));
+                }}, id);
+        if (staged.isEmpty()) throw new IllegalArgumentException("Staged template package not found");
+        Map<String, Object> pkg = staged.get(0);
+        if (!"VALIDATED".equals(pkg.get("status"))) {
+            throw new IllegalArgumentException("Only a validated, unpublished package can be published");
+        }
+        String templateId = String.valueOf(pkg.get("templateId"));
+        String packageVersion = String.valueOf(pkg.get("packageVersion"));
+        byte[] archive = (byte[]) pkg.get("archive");
+        String sha256 = String.valueOf(pkg.get("sha256"));
+
+        Integer categoryExists = jdbc.queryForObject(
+                "SELECT count(*) FROM event_category WHERE id=? AND enabled=true", Integer.class, categoryId);
+        if (categoryExists == null || categoryExists != 1) {
+            throw new IllegalArgumentException("Choose an enabled invitation category");
+        }
+
+        Map<String, Object> mapped = definitionMapper.map(archive);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> definition = new java.util.LinkedHashMap<>((Map<String, Object>) mapped.get("definition"));
+        definition.put("packageVersion", packageVersion);
+        String templateKey = templateId.toLowerCase(java.util.Locale.ROOT);
+
+        var existing = jdbc.query(
+                "SELECT id,category_id,current_version FROM invitation_template WHERE template_key=? FOR UPDATE",
+                (rs, row) -> Map.of("id", rs.getObject("id", UUID.class),
+                        "categoryId", rs.getObject("category_id", UUID.class),
+                        "currentVersion", rs.getInt("current_version")), templateKey);
+        UUID templatePk;
+        int nextVersion;
+        if (existing.isEmpty()) {
+            templatePk = UUID.randomUUID();
+            nextVersion = 1;
+            jdbc.update("INSERT INTO invitation_template(id,category_id,template_key,display_name,description,status,current_version) VALUES (?,?,?,?,?,'DRAFT',0)",
+                    templatePk, categoryId, templateKey, pkg.get("name"),
+                    body.get("description") == null ? null : String.valueOf(body.get("description")));
+        } else {
+            Map<String, Object> row = existing.get(0);
+            templatePk = (UUID) row.get("id");
+            if (!categoryId.equals(row.get("categoryId"))) {
+                throw new IllegalArgumentException("An existing template cannot be moved to another category during version publishing");
+            }
+            nextVersion = ((Number) row.get("currentVersion")).intValue() + 1;
+            Integer duplicate = jdbc.queryForObject(
+                    "SELECT count(*) FROM invitation_template_version WHERE template_id=? AND package_version=?",
+                    Integer.class, templatePk, packageVersion);
+            if (duplicate != null && duplicate > 0) {
+                throw new IllegalArgumentException("This package version has already been published");
+            }
+        }
+
+        GitHubTemplateReleaseService.ReleaseCommit release =
+                releaseService.commitPackage(templateId, packageVersion, sha256, archive);
+        UUID templateVersionId = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by,package_resource_path,package_sha256,package_version) " +
+                "VALUES (?,?,?,?::jsonb,?,?,?,?)",
+                templateVersionId, templatePk, nextVersion, new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(definition),
+                actor, release.resourcePath(), sha256, packageVersion);
+        jdbc.update("UPDATE invitation_template SET display_name=?,description=COALESCE(?,description),status='PUBLISHED',current_version=?,updated_at=now() WHERE id=?",
+                pkg.get("name"), body.get("description") == null ? null : String.valueOf(body.get("description")),
+                nextVersion, templatePk);
+        jdbc.update("UPDATE template_package_stage SET status='RELEASED',released_at=now(),release_commit_sha=?,release_resource_path=?,released_template_version_id=? WHERE id=?",
+                release.commitSha(), release.resourcePath(), templateVersionId, id);
+
+        audit.record(actor, "TEMPLATE_PACKAGE_PUBLISHED", "TEMPLATE_PACKAGE", id.toString(), "SUCCESS",
+                Map.of("templateId", templateId, "packageVersion", packageVersion,
+                        "templateVersionId", templateVersionId.toString(), "commit", release.commitSha(),
+                        "resourcePath", release.resourcePath()));
+        return ApiResponse.success(Map.of("packageId", id, "templateId", templateId, "templateVersionId", templateVersionId,
+                "versionNumber", nextVersion, "packageVersion", packageVersion, "status", "PUBLISHED",
+                "commitSha", release.commitSha(), "releaseBranch", release.branch(), "resourcePath", release.resourcePath()));
     }
 
     @PostMapping("/packages/{id}/revalidate")
