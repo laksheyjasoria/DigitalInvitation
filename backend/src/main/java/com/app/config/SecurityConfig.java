@@ -38,7 +38,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/public/invitations/*/rsvp").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/admin/**").hasAnyRole("ADMIN","SUPER_ADMIN","SUPPORT")
                 .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN","SUPER_ADMIN")
-                .anyRequest().authenticated())
+                .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").hasAnyRole("CUSTOMER","ADMIN","SUPER_ADMIN","SUPPORT")
+                .anyRequest().hasAnyRole("CUSTOMER","ADMIN","SUPER_ADMIN"))
             .httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
     }
