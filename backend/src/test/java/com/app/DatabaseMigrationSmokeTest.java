@@ -238,7 +238,7 @@ class DatabaseMigrationSmokeTest {
                 objectMapper.readTree(created.getResponse().getContentAsString()).path("data").path("id").asText());
 
         var requiredKeys = jdbc.query(
-                "SELECT substring(setting_key from 17) AS consent_key FROM system_setting " +
+                "SELECT substring(setting_key from 18) AS consent_key FROM system_setting " +
                 "WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",
                 (rs, n) -> rs.getString("consent_key"));
         java.util.Map<String,Boolean> consents = new java.util.LinkedHashMap<>();
