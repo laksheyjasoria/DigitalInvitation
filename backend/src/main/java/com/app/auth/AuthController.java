@@ -120,7 +120,11 @@ public class AuthController {
  public ApiResponse<?> forgot(@RequestBody Map<String,String> body){
   String email=body.getOrDefault("email","").trim().toLowerCase();
   var users=jdbc.query("SELECT id FROM app_user WHERE email=? AND status='ACTIVE'",(rs,n)->rs.getObject("id",UUID.class),email);
-  if(!users.isEmpty()){String raw=token();saveToken(users.get(0),"PASSWORD_RESET",raw,1);enqueue(email,"PASSWORD_RESET",Map.of("token",raw,"baseUrl",publicBaseUrl));}
+  if(!users.isEmpty()){
+   UUID user=users.get(0);
+   Long recent=jdbc.queryForObject("SELECT count(*) FROM auth_token WHERE user_id=? AND token_type='PASSWORD_RESET' AND created_at>now()-interval '1 hour'",Long.class,user);
+   if(recent==null||recent<3){String raw=token();saveToken(user,"PASSWORD_RESET",raw,1);enqueue(email,"PASSWORD_RESET",Map.of("token",raw,"baseUrl",publicBaseUrl));}
+  }
   return ApiResponse.success(Map.of("message","If the account exists, password reset instructions will be sent."));
  }
 
