@@ -207,9 +207,13 @@ public class TemplateStudioController {
 
         var existing = jdbc.query(
                 "SELECT id,category_id,current_version FROM invitation_template WHERE template_key=? FOR UPDATE",
-                (rs, row) -> Map.of("id", rs.getObject("id", UUID.class),
-                        "categoryId", rs.getObject("category_id", UUID.class),
-                        "currentVersion", rs.getInt("current_version")), templateKey);
+                (rs, row) -> {
+                    Map<String, Object> item = new java.util.HashMap<>();
+                    item.put("id", rs.getObject("id", UUID.class));
+                    item.put("categoryId", rs.getObject("category_id", UUID.class));
+                    item.put("currentVersion", rs.getInt("current_version"));
+                    return item;
+                }, templateKey);
         UUID templatePk;
         int nextVersion;
         if (existing.isEmpty()) {
