@@ -33,9 +33,9 @@ public class AdminBootstrap implements ApplicationRunner {
         if (email == null || email.isBlank()) {
             return;
         }
-        if (password == null || password.length() < 16 || password.length() > 72) {
+        if (password == null || password.length() < 8 || password.length() > 72\n                || !password.matches("^(?=.*[A-Za-z])(?=.*\\\\d)(?=.*[^A-Za-z0-9\\\\s]).{8,72}$")) {
             throw new IllegalStateException(
-                    "APP_BOOTSTRAP_ADMIN_PASSWORD must contain between 16 and 72 characters when an admin email is configured");
+                    "APP_BOOTSTRAP_ADMIN_PASSWORD must be 8-72 characters and include a letter, a number, and a symbol");
         }
 
         String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
