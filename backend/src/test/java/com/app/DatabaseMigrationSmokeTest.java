@@ -395,6 +395,13 @@ class DatabaseMigrationSmokeTest {
                 Boolean.class, invitedEmail));
 
         String supportToken = jwtService.issue(supportId.toString(), invitedEmail, "SUPPORT", 0);
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + supportToken))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/invitations")
+                        .header("Authorization", "Bearer " + supportToken)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/admin/template-studio/packages")
                         .header("Authorization", "Bearer " + supportToken))
                 .andExpect(status().isOk());
