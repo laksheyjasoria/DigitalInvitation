@@ -13,7 +13,25 @@ $("new-invitation").addEventListener("click",async()=>{try{activeInvitation=null
 $("category").addEventListener("change",e=>loadTemplates(e.target.value));
 $("template").addEventListener("change",async()=>{try{const rows=await api("/catalog/categories/"+$("category").value+"/templates");const selected=rows.find(t=>t.template_version_id===$("template").value);if(selected){const d=await api("/catalog/templates/"+selected.id);templateDefinition=typeof d.definition==="string"?JSON.parse(d.definition):d.definition;renderSections();}}catch(e){alert(e.message);}});
 function renderSections(){
- const sections=templateDefinition?.sections||[];
+ if(!templateDefinition)templateDefinition={sections:[]};
+ if(!Array.isArray(templateDefinition.sections))templateDefinition.sections=[];
+ const known=new Set(templateDefinition.sections.map(section=>section.key));
+ (draftContent?.sections||[]).forEach(saved=>{
+  if(!known.has(saved.key)){
+   const fieldNames=[...new Set([...(Object.keys(saved.values||{})),...(saved.items||[]).flatMap(item=>Object.keys(item||{}))])];
+   templateDefinition.sections.push({key:saved.key,label:saved.label||"Custom section",enabled:saved.enabled!==false,custom:true,fields:fieldNames.length?fieldNames:["content"]});
+   known.add(saved.key);
+  }
+ });
+ templateDefinition.sections.forEach(section=>{
+  const saved=draftContent?.sections?.find(item=>item.key===section.key);
+  if(saved){
+   const existing=new Set(section.fields||[]);
+   const extra=[...Object.keys(saved.values||{}),...(saved.items||[]).flatMap(item=>Object.keys(item||{}))].filter(field=>!existing.has(field));
+   if(extra.length)section.fields=[...(section.fields||[]),...new Set(extra)];
+  }
+ });
+ const sections=templateDefinition.sections;
  $("add-section").classList.toggle("hidden",!customSectionsEnabled||templateDefinition?.customSectionsAllowed===false);
  $("section-editor").innerHTML=sections.map((section,i)=>{
   const saved=draftContent?.sections?.find(x=>x.key===section.key)||{};
