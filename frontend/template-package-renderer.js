@@ -72,8 +72,12 @@
           if (value !== undefined) break;
         }
       }
-      if (value !== undefined && value !== null && String(value).length) {
+      if (value !== undefined && value !== null && String(value).trim().length) {
         node.textContent = String(value);
+      } else {
+        // Do not leak a designer's sample placeholder when a customer leaves
+        // an optional field blank or explicitly hides it.
+        node.remove();
       }
     });
   }
