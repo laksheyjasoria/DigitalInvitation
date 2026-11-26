@@ -35,6 +35,8 @@ public class TemplateDefinitionMapper {
                 List<Map<String, Object>> fields = new java.util.ArrayList<>();
                 List<String> requiredFields = new java.util.ArrayList<>();
                 Map<String, Object> values = new LinkedHashMap<>();
+                Element sampleSection = findSampleSection(sample, key);
+                Element sampleSource = sampleSection == null ? sample : sampleSection;
                 boolean repeatable = Boolean.parseBoolean(section.getAttribute("repeatable"));
                 NodeList fieldNodes = section.getElementsByTagName("field");
 
@@ -55,7 +57,7 @@ public class TemplateDefinitionMapper {
                     fields.add(mappedField);
                     if (fieldRequired) requiredFields.add(fieldKey);
 
-                    NodeList sampleValues = sample.getElementsByTagName(fieldKey);
+                    NodeList sampleValues = sampleSource.getElementsByTagName(fieldKey);
                     if (sampleValues.getLength() > 0 && !sampleValues.item(0).getTextContent().isBlank()) {
                         values.put(fieldKey, sampleValues.item(0).getTextContent().trim());
                     }
@@ -77,7 +79,24 @@ public class TemplateDefinitionMapper {
                 sampleSection.put("key", key);
                 sampleSection.put("enabled", true);
                 sampleSection.put("values", values);
-                if (repeatable) sampleSection.put("items", List.of(values));
+                if (repeatable) {
+                    List<Map<String, Object>> items = new java.util.ArrayList<>();
+                    NodeList itemNodes = sampleSource.getElementsByTagName("item");
+                    for (int itemIndex = 0; itemIndex < itemNodes.getLength(); itemIndex++) {
+                        Element itemElement = (Element) itemNodes.item(itemIndex);
+                        Map<String, Object> itemValues = new LinkedHashMap<>();
+                        for (int fieldIndex = 0; fieldIndex < fieldNodes.getLength(); fieldIndex++) {
+                            String fieldKey = required((Element) fieldNodes.item(fieldIndex), "key");
+                            NodeList itemFieldValues = itemElement.getElementsByTagName(fieldKey);
+                            if (itemFieldValues.getLength() > 0 && !itemFieldValues.item(0).getTextContent().isBlank()) {
+                                itemValues.put(fieldKey, itemFieldValues.item(0).getTextContent().trim());
+                            }
+                        }
+                        if (!itemValues.isEmpty()) items.add(itemValues);
+                    }
+                    if (items.isEmpty() && !values.isEmpty()) items.add(values);
+                    sampleSection.put("items", items);
+                }
                 sampleSections.add(sampleSection);
             }
 
@@ -164,6 +183,11 @@ public class TemplateDefinitionMapper {
         if (lower.endsWith(".js")) return "application/javascript";
         if (lower.endsWith(".txt")) return "text/plain";
         return null;
+    }
+
+    private Element findSampleSection(Element sample, String key) {
+        NodeList sections = sample.getElementsByTagName(key);
+        return sections.getLength() == 0 ? null : (Element) sections.item(0);
     }
 
     private String normalizeType(String type) {
