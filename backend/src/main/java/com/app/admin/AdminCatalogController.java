@@ -87,55 +87,17 @@ public class AdminCatalogController {
     }
 
     @PostMapping("/templates")
-    @Transactional
-    public ApiResponse<?> createTemplate(@RequestBody Map<String, Object> body, Authentication auth) {
-        UUID category = UUID.fromString(string(body.get("categoryId")));
-        String key = string(body.get("key")).toLowerCase(java.util.Locale.ROOT);
-        String name = string(body.get("name"));
-        Object definition = body.get("definition");
-        if (!key.matches("[a-z0-9_-]{2,100}") || name.isBlank() || name.length() > 160 || !(definition instanceof Map)) {
-            throw new IllegalArgumentException("Template key, name and JSON definition are required");
-        }
-        Integer categoryExists = jdbc.queryForObject("SELECT count(*) FROM event_category WHERE id=? AND enabled=true",
-                Integer.class, category);
-        if (categoryExists == null || categoryExists != 1) throw new IllegalArgumentException("Choose an enabled category");
-        UUID id = UUID.randomUUID();
-        UUID version = UUID.randomUUID();
-        UUID actor = UUID.fromString(auth.getName());
-        try {
-            jdbc.update("INSERT INTO invitation_template(id,category_id,template_key,display_name,description,status,current_version) VALUES (?,?,?,?,?,'PUBLISHED',1)",
-                    id, category, key, name, nullableString(body.get("description")));
-            jdbc.update("INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by) VALUES (?,?,1,?::jsonb,?)",
-                    version, id, mapper.writeValueAsString(definition), actor);
-        } catch (Exception ex) {
-            throw new IllegalArgumentException("Unable to create template. Check its key and JSON definition");
-        }
-        audit.record(actor, "TEMPLATE_CREATED", "TEMPLATE", id.toString(), "SUCCESS", Map.of("key", key));
-        return ApiResponse.success(Map.of("id", id, "versionId", version, "versionNumber", 1));
+    public ApiResponse<?> createTemplate(@RequestBody Map<String, Object> body) {
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.GONE,
+                "Create and publish templates through Template Studio using a validated XML package");
     }
 
     @PostMapping("/templates/{id}/versions")
-    @Transactional
-    public ApiResponse<?> addVersion(@PathVariable UUID id, @RequestBody Map<String, Object> body,
-                                     Authentication auth) {
-        Object definition = body.get("definition");
-        if (!(definition instanceof Map)) throw new IllegalArgumentException("Template definition must be a JSON object");
-        var rows = jdbc.query("SELECT current_version FROM invitation_template WHERE id=? FOR UPDATE",
-                (rs, n) -> rs.getInt(1), id);
-        if (rows.isEmpty()) throw new IllegalArgumentException("Template not found");
-        int next = rows.get(0) + 1;
-        UUID version = UUID.randomUUID();
-        UUID actor = UUID.fromString(auth.getName());
-        try {
-            jdbc.update("INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by) VALUES (?,?,?,?::jsonb,?)",
-                    version, id, next, mapper.writeValueAsString(definition), actor);
-            jdbc.update("UPDATE invitation_template SET current_version=?,updated_at=now() WHERE id=?", next, id);
-        } catch (Exception ex) {
-            throw new IllegalArgumentException("Unable to create template version");
-        }
-        audit.record(actor, "TEMPLATE_VERSION_CREATED", "TEMPLATE", id.toString(), "SUCCESS",
-                Map.of("versionNumber", next));
-        return ApiResponse.success(Map.of("versionId", version, "versionNumber", next));
+    public ApiResponse<?> addVersion(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.GONE,
+                "Create template versions through Template Studio using a validated XML package");
     }
 
     @PatchMapping("/templates/{id}/status")
