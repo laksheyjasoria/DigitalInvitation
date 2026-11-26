@@ -216,7 +216,8 @@ public class FileServerStorageProvider implements StorageProvider {
     }
 
     private String requirePath(String value, String description) {
-        if (value == null || value.isBlank() || !value.startsWith("/")) {
+        if (value == null || value.isBlank() || !value.startsWith("/") || value.startsWith("//")
+                || value.contains("://") || value.contains("?") || value.contains("#")) {
             throw new IllegalStateException("FileServer " + description + " must be an absolute path");
         }
         return value;
