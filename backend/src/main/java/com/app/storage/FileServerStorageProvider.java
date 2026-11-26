@@ -150,11 +150,15 @@ public class FileServerStorageProvider implements StorageProvider {
 
     @Override
     public InputStream download(String storageKey) {
-        return client.get()
+        byte[] content = client.get()
                 .uri(downloadPath, storageKey)
                 .accept(MediaType.APPLICATION_OCTET_STREAM)
                 .retrieve()
-                .body(InputStream.class);
+                .body(byte[].class);
+        if (content == null) {
+            throw new IllegalStateException("FileServer returned an empty Master Drive file response");
+        }
+        return new java.io.ByteArrayInputStream(content);
     }
 
     @Override
