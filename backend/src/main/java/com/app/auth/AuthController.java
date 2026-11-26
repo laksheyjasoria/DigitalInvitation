@@ -32,14 +32,15 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthController {
  private final JdbcTemplate jdbc;private final PasswordEncoder encoder;private final JwtService jwt;private final ObjectMapper mapper;
  private final AuthRateLimitService rateLimit;private final SecureRandom random=new SecureRandom();
- private final String publicBaseUrl;private final long refreshTokenDays;private final boolean secureRefreshCookie;
+ private final String publicBaseUrl;private final long refreshTokenDays;private final boolean secureRefreshCookie;private final boolean mailEnabled;
  public AuthController(JdbcTemplate jdbc,PasswordEncoder encoder,JwtService jwt,ObjectMapper mapper,AuthRateLimitService rateLimit,
    @Value("${app.public-base-url}")String publicBaseUrl,
    @Value("${app.security.jwt.refresh-token-days:30}")long refreshTokenDays,
-   @Value("${app.security.refresh-cookie-secure:true}")boolean secureRefreshCookie){
+   @Value("${app.security.refresh-cookie-secure:true}")boolean secureRefreshCookie,
+   @Value("${app.mail.enabled:false}")boolean mailEnabled){
   if(refreshTokenDays<1||refreshTokenDays>365)throw new IllegalArgumentException("Refresh token lifetime must be between 1 and 365 days");
   this.jdbc=jdbc;this.encoder=encoder;this.jwt=jwt;this.mapper=mapper;this.rateLimit=rateLimit;
-  this.publicBaseUrl=publicBaseUrl;this.refreshTokenDays=refreshTokenDays;this.secureRefreshCookie=secureRefreshCookie;
+  this.publicBaseUrl=publicBaseUrl;this.refreshTokenDays=refreshTokenDays;this.secureRefreshCookie=secureRefreshCookie;this.mailEnabled=mailEnabled;
  }
  public record RegisterRequest(@Email @NotBlank String email,@NotBlank @Size(min=12,max=72) String password,@NotBlank @Size(max=120) String displayName){}
  public record LoginRequest(@Email @NotBlank String email,@NotBlank String password){}
@@ -47,13 +48,22 @@ public class AuthController {
  public record ResetRequest(@NotBlank String token,@NotBlank @Size(min=12,max=72) String newPassword){}
 
  @PostMapping("/register") @ResponseStatus(HttpStatus.CREATED)
+ @Transactional
  public ApiResponse<?> register(@Valid @RequestBody RegisterRequest r){
-  UUID id=UUID.randomUUID();String email=r.email().trim().toLowerCase();
-  try{jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,status) VALUES (?,?,?,?, 'PENDING_VERIFICATION')",id,email,encoder.encode(r.password()),r.displayName().trim());}
-  catch(DuplicateKeyException e){throw new IllegalArgumentException("An account with this email already exists");}
-  String raw=token();saveToken(id,"EMAIL_VERIFY",raw,24);
-  enqueue(email,"EMAIL_VERIFY",Map.of("token",raw,"baseUrl",publicBaseUrl));
-  return ApiResponse.success(Map.of("userId",id,"email",email,"status","EMAIL_VERIFICATION_REQUIRED"));
+  UUID id=UUID.randomUUID();String email=r.email().trim().toLowerCase(java.util.Locale.ROOT);
+  try{
+   if(mailEnabled){
+    jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,status) VALUES (?,?,?,?, 'PENDING_VERIFICATION')",id,email,encoder.encode(r.password()),r.displayName().trim());
+   }else{
+    jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,status,email_verified_at) VALUES (?,?,?,?, 'ACTIVE', now())",id,email,encoder.encode(r.password()),r.displayName().trim());
+   }
+  }catch(DuplicateKeyException e){throw new IllegalArgumentException("An account with this email already exists");}
+  if(mailEnabled){
+   String raw=token();saveToken(id,"EMAIL_VERIFY",raw,24);
+   enqueue(email,"EMAIL_VERIFY",Map.of("token",raw,"baseUrl",publicBaseUrl));
+   return ApiResponse.success(Map.of("userId",id,"email",email,"status","EMAIL_VERIFICATION_REQUIRED"));
+  }
+  return ApiResponse.success(Map.of("userId",id,"email",email,"status","ACTIVE","emailVerified",true));
  }
 
  @PostMapping("/verify-email")
