@@ -21,7 +21,21 @@ Business settings are stored in system_setting and changed through the admin API
 | invitation.expiry.extension-days | 7 | Extension duration |
 | invitation.expiry.extension-price-minor | 19900 | Extension price |
 
-The backend refuses to guess missing required price, timezone or expiry settings. Safety limits remain enforced.
+The backend refuses to guess missing required price, timezone or expiry settings. Admin setting updates validate value types, reject generic edits to sensitive settings, and write version history and audit records in the same transaction. Safety limits remain enforced.
+
+## Authentication and abuse-control settings
+
+| Environment variable | Default | Meaning |
+|---|---:|---|
+| APP_JWT_ACCESS_TOKEN_MINUTES | 15 | Access JWT lifetime |
+| APP_JWT_REFRESH_TOKEN_DAYS | 30 | Rotating refresh-session lifetime; 1–365 days |
+| APP_REFRESH_COOKIE_SECURE | true | Set true behind HTTPS; local HTTP example sets false |
+| APP_LOGIN_MAX_ATTEMPTS | 8 | Failed sign-ins before temporary block |
+| APP_LOGIN_WINDOW_MINUTES | 15 | Failed-login counting window |
+| APP_LOGIN_BLOCK_MINUTES | 15 | Login block duration |
+| APP_PUBLIC_RSVP_MAX_PER_HOUR | 5 | RSVP submissions per publication/client per hour |
+
+Refresh credentials are stored as hashes in PostgreSQL and sent in an HttpOnly, SameSite=Strict cookie. Password reset, user suspension and role changes invalidate existing access credentials. Login and public RSVP throttling buckets are periodically cleaned.
 
 ## Required environment secrets
 - POSTGRES_PASSWORD
