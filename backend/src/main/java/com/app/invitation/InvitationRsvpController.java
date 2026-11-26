@@ -17,21 +17,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 public class InvitationRsvpController {
- private final JdbcTemplate jdbc;private final SystemSettingService settings;
- public InvitationRsvpController(JdbcTemplate jdbc,SystemSettingService settings){this.jdbc=jdbc;this.settings=settings;}
+ private final JdbcTemplate jdbc;private final SystemSettingService settings;private final PublicSubmissionRateLimitService rateLimit;
+ public InvitationRsvpController(JdbcTemplate jdbc,SystemSettingService settings,PublicSubmissionRateLimitService rateLimit){this.jdbc=jdbc;this.settings=settings;this.rateLimit=rateLimit;}
  public record RsvpRequest(@NotBlank @jakarta.validation.constraints.Size(max=160)String guestName,
   @Email @jakarta.validation.constraints.Size(max=320)String guestEmail,
   @NotBlank String attendance,@Min(0) @Max(20)Integer guestCount,
   @jakarta.validation.constraints.Size(max=1000)String message){}
  @PostMapping("/api/v1/public/invitations/{slug}/rsvp")
  @ResponseStatus(HttpStatus.CREATED)
- public ApiResponse<?> submit(@PathVariable String slug,@Valid @RequestBody RsvpRequest request){
+ public ApiResponse<?> submit(@PathVariable String slug,@Valid @RequestBody RsvpRequest request,jakarta.servlet.http.HttpServletRequest httpRequest){
   if(!settings.getBoolean("invitation.rsvp.enabled"))throw new ResponseStatusException(HttpStatus.NOT_FOUND,"RSVP is not enabled");
   if(!java.util.Set.of("ATTENDING","NOT_ATTENDING","MAYBE").contains(request.attendance()))throw new IllegalArgumentException("Invalid RSVP response");
   var rows=jdbc.query("SELECT p.id,p.invitation_id FROM invitation_publication p WHERE p.public_slug=? AND p.revoked_at IS NULL AND p.expires_at>now()",
    (rs,n)->Map.of("publicationId",rs.getObject("id",UUID.class),"invitationId",rs.getObject("invitation_id",UUID.class)),slug);
   if(rows.isEmpty())throw new ResponseStatusException(HttpStatus.GONE,"Invitation is expired or unavailable");
-  var p=rows.get(0);UUID id=UUID.randomUUID();
+  var p=rows.get(0);rateLimit.assertAllowed((UUID)p.get("publicationId"),httpRequest.getRemoteAddr());UUID id=UUID.randomUUID();
   jdbc.update("INSERT INTO invitation_rsvp(id,invitation_id,publication_id,guest_name,guest_email,attendance,guest_count,message) VALUES (?,?,?,?,?,?,?,?)",
    id,p.get("invitationId"),p.get("publicationId"),request.guestName().trim(),request.guestEmail(),request.attendance(),request.guestCount()==null?1:request.guestCount(),request.message());
   return ApiResponse.success(Map.of("rsvpId",id,"received",true));
