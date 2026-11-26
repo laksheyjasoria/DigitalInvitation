@@ -3,13 +3,14 @@ name: Platform CI
 on:
   push:
     branches: ["feature/platform-implementation"]
-    paths: ["backend/**","frontend/**","docker-compose.yml",".github/workflows/backend-ci.yml"]
+    paths: ["backend/**","frontend/**","docker-compose.yml","docker-compose.eclipse.yml",".github/workflows/backend-ci.yml"]
   pull_request:
     types: [opened, synchronize, reopened, edited]
     paths:
       - "backend/**"
       - "frontend/**"
       - "docker-compose.yml"
+      - "docker-compose.eclipse.yml"
       - ".github/workflows/backend-ci.yml"
 
 permissions:
@@ -52,6 +53,7 @@ jobs:
           node --check frontend/verify.js
           node --check frontend/forgot.js
           node --check frontend/reset.js
+          node --check frontend/dev-server.js
       - name: Verify backend and PostgreSQL migrations
         working-directory: backend
         run: mvn --batch-mode verify
@@ -61,3 +63,4 @@ jobs:
         run: |
           cp .env.example .env
           docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.eclipse.yml config --quiet
