@@ -21,6 +21,7 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Add tests for policy version changes and consent invalidation after content changes.
 - [x] Add owner-scoped media deletion and no-store cache headers for private/public media delivery.
 - [ ] Add upload malware/content scanning, decompression bomb limits, image dimension limits and storage cleanup tests.
+- [ ] Add automated regression tests for custom section/field round-tripping and repeatable function entries across draft reopen, reorder, publish and public rendering.
 - [ ] Run SAST, dependency, container and secret scans; perform independent penetration testing.
 
 ## Integrations
@@ -52,12 +53,12 @@ This implementation is an integration milestone. Do not accept live customers un
 ## Known implementation gaps
 
 - Access tokens are short-lived; refresh tokens rotate in HttpOnly SameSite cookies and password reset revokes refresh sessions. Automated replay/expiry and browser multi-tab tests remain.
-- Email outbox sends verification/reset messages when SMTP is enabled, but bounce/dead-letter operations need admin tooling.
+- Email outbox sends verification/reset messages when SMTP is enabled. Admins can inspect delivery metadata and manually retry FAILED messages; provider bounce webhooks, dead-letter alerting and delivery analytics remain.
 - DigitalInvitation now targets the FileServer Master Drive API using the server-side `X-Master-Key`. Its upload operation waits for FileServer's asynchronous upload job and persists the returned Master Drive file ID. This code is not proof of a live integration: the compatible FileServer API branch must be deployed, a dedicated root drive configured, and upload/read/range/delete/auth/concurrency/recovery tests completed.
 - Razorpay remains the first payment adapter but is intentionally disabled until later configuration. Never mark an order paid or publish a paid invitation without a verified provider settlement. Provider sandbox and concurrency tests remain.
 - Configurable percentage tax, extension orders/settlement and purchase-time pricing/expiry snapshots are implemented in the current branch; coupons, invoice generation, refund administration and payment reconciliation UI are not complete.
 - Basic configurable RSVP capture, owner-only response listing, per-publication/client rate limiting and owner-only CSV export are implemented; full attendee management, invitation analytics and calendar support, additional translated UI languages, and localized date formatting remain.
-- Admin dashboard is a first control surface; full support tooling, admin MFA, role management UX and audit search UI remain.
+- Admin dashboard includes customer activation/suspension, category/template management, runtime settings, orders, audit events and email outbox inspection/retry. Full support tooling, admin MFA, role management UX and advanced audit search remain.
 - UI end-to-end, accessibility, browser, mobile, load and security testing remain.
 
 Do not describe this milestone as production-ready until this checklist is completed and CI/security/integration tests are green.
