@@ -64,6 +64,7 @@ public class InvitationRsvpController {
 
  private static String csv(Object value){
   String text=value==null?"":String.valueOf(value);
+  if(!text.isEmpty()&&text.stripLeading().matches("^[=+@-].*"))text="'"+text;
   return "\"" + text.replace("\"", "\"\"") + "\"";
  }
 }
