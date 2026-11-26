@@ -101,7 +101,7 @@
     policy.after(bootstrap);
 
     const style = doc.createElement("style");
-    style.textContent = replaceAssetReferences(preview.css || "", preview.assets).replace(/<\\/style/gi, "<\\\\/style");
+    style.textContent = replaceAssetReferences(preview.css || "", preview.assets).replace(/<\/style/gi, "<\\/style");
     bootstrap.after(style);
 
     if (preview.js) {
