@@ -22,7 +22,7 @@
     const parser = new DOMParser();
     const source = parser.parseFromString(preview.html, "text/html");
     source.querySelectorAll("base,iframe,object,embed,meta[http-equiv]").forEach(node => node.remove());
-    source.querySelectorAll('link[rel~="stylesheet"]').forEach(node => node.remove());
+    source.querySelectorAll('link[rel~="stylesheet"]').forEach(node => { const href=node.getAttribute("href")||""; if(!href.startsWith("data:text/css"))node.remove(); });
     source.querySelectorAll("script[src]").forEach(node => {
       const src = node.getAttribute("src") || "";
       if (/(?:^|\/)script\.js(?:[?#].*)?$/i.test(src)) node.remove();
