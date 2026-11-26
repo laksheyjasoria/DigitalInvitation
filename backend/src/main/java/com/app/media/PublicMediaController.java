@@ -24,6 +24,6 @@ public class PublicMediaController {
   var row=rows.get(0);StreamingResponseBody body=out->{try(var in=storage.download((String)row.get("key"))){in.transferTo(out);}};
   return ResponseEntity.ok().contentType(MediaType.parseMediaType((String)row.get("type")))
    .header(HttpHeaders.CONTENT_DISPOSITION,"inline")
-   .header("X-Content-Type-Options","nosniff").body(body);
+   .header("X-Content-Type-Options","nosniff").header(HttpHeaders.CACHE_CONTROL,"private, no-store").body(body);
  }
 }
