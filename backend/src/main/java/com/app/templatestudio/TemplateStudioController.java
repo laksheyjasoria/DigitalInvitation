@@ -3,11 +3,14 @@ package com.app.templatestudio;
 import com.app.audit.AuditLogService;
 import com.app.common.api.ApiResponse;
 import java.io.ByteArrayOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.io.InputStream;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +20,10 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/admin/template-studio")
 public class TemplateStudioController {
+    private static final int MAX_FILES = 150;
+    private static final long MAX_EXPANDED_BYTES = 25L * 1024 * 1024;
+    private static final int MAX_ARCHIVE_BYTES = 10 * 1024 * 1024;
+
     private final JdbcTemplate jdbc;
     private final TemplatePackageValidator validator;
     private final AuditLogService audit;
@@ -46,19 +53,43 @@ public class TemplateStudioController {
     @PostMapping(value = "/packages/files", consumes = "multipart/form-data")
     @Transactional
     public ApiResponse<?> uploadFiles(@RequestParam("files") List<MultipartFile> files, Authentication authentication) throws Exception {
-        if (files == null || files.isEmpty() || files.size() > 150) throw new IllegalArgumentException("Select between 1 and 150 template files");
-        long total = files.stream().mapToLong(MultipartFile::getSize).sum();
-        if (total <= 0 || total > 25L * 1024 * 1024) throw new IllegalArgumentException("Combined template files must not exceed 25 MB");
+        if (files == null || files.isEmpty() || files.size() > MAX_FILES) {
+            throw new IllegalArgumentException("Select between 1 and 150 template files");
+        }
+
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        Set<String> names = new HashSet<>();
+        long expandedBytes = 0;
         try (ZipOutputStream zip = new ZipOutputStream(bytes)) {
             for (MultipartFile part : files) {
-                String name = part.getOriginalFilename();
-                if (name == null || name.isBlank() || part.isEmpty()) throw new IllegalArgumentException("Every selected file must have a filename and content");
+                if (part == null || part.isEmpty()) {
+                    throw new IllegalArgumentException("Every selected file must have content");
+                }
+                String name = safeArchiveEntryName(part.getOriginalFilename());
+                if (!names.add(name)) {
+                    throw new IllegalArgumentException("Duplicate template file: " + name);
+                }
+
                 zip.putNextEntry(new ZipEntry(name));
-                part.getInputStream().transferTo(zip);
+                try (InputStream input = part.getInputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int read;
+                    while ((read = input.read(buffer)) != -1) {
+                        expandedBytes += read;
+                        if (expandedBytes > MAX_EXPANDED_BYTES) {
+                            throw new IllegalArgumentException("Combined template files must not exceed 25 MB");
+                        }
+                        zip.write(buffer, 0, read);
+                    }
+                }
                 zip.closeEntry();
+                zip.flush();
+                if (bytes.size() > MAX_ARCHIVE_BYTES) {
+                    throw new IllegalArgumentException("Generated template ZIP exceeds 10 MB; optimize the assets or upload a ZIP directly");
+                }
             }
         }
+
         byte[] archive = bytes.toByteArray();
         TemplatePackageValidator.ValidationResult result = validator.validate(archive);
         UUID id = UUID.randomUUID();
@@ -71,10 +102,26 @@ public class TemplateStudioController {
                 "version", result.version(), "status", "VALIDATED", "fileCount", result.fileCount(), "sha256", result.sha256()));
     }
 
+    static String safeArchiveEntryName(String originalName) {
+        if (originalName == null || originalName.isBlank() || originalName.length() > 180
+                || originalName.startsWith("/") || originalName.startsWith("\\")
+                || originalName.contains("\\") || originalName.contains(":")
+                || originalName.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Template file has an unsafe path");
+        }
+        String[] segments = originalName.split("/", -1);
+        for (String segment : segments) {
+            if (segment.isBlank() || segment.equals(".") || segment.equals("..")) {
+                throw new IllegalArgumentException("Template file has an unsafe path: " + originalName);
+            }
+        }
+        return originalName;
+    }
+
     @PostMapping(value = "/packages", consumes = "multipart/form-data")
     @Transactional
     public ApiResponse<?> upload(@RequestPart("file") MultipartFile file, Authentication authentication) throws Exception {
-        if (file == null || file.isEmpty() || file.getSize() > 10L * 1024 * 1024) {
+        if (file == null || file.isEmpty() || file.getSize() > MAX_ARCHIVE_BYTES) {
             throw new IllegalArgumentException("Choose a template ZIP smaller than 10 MB");
         }
         String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
