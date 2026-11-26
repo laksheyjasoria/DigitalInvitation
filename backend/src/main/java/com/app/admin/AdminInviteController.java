@@ -27,11 +27,12 @@ public class AdminInviteController {
 
     public AdminInviteController(JdbcTemplate jdbc, AuditLogService audit,
             @Value("${app.public-base-url}") String publicBaseUrl,
-            @Value("${app.mail.enabled:false}") boolean mailEnabled) {
+            @Value("${app.mail.enabled:false}") boolean mailEnabled,
+            @Value("${spring.mail.host:}") String smtpHost) {
         this.jdbc = jdbc;
         this.audit = audit;
         this.publicBaseUrl = publicBaseUrl;
-        this.mailEnabled = mailEnabled;
+        this.mailEnabled = mailEnabled && smtpHost != null && !smtpHost.isBlank();
     }
 
     @GetMapping
