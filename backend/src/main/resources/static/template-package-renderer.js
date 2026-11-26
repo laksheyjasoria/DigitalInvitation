@@ -37,7 +37,7 @@
 
     const style = doc.createElement("style");
     style.textContent = replaceAssetReferences(preview.css || "", preview.assets).replace(/<\/style/gi, "<\\/style");
-    doc.head.append(style);
+    bootstrap.after(style);
 
     const bootstrap = doc.createElement("script");
     bootstrap.textContent = "window.digitalInvitationPreviewData=" + scriptSafeJson(snapshot) + ";";
