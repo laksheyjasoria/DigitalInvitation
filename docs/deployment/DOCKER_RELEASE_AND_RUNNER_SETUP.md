@@ -50,8 +50,10 @@ production configuration.
 
 1. Register a Linux self-hosted runner on the Docker host and add the labels `self-hosted` and `digitalinvitation`. On a Windows Docker host, run the runner inside Ubuntu WSL2 with Docker Desktop WSL integration enabled; the deployment script requires Bash, `grep`, `sed` and the Docker CLI.
 2. Run it under a dedicated non-root account with the minimum Docker permissions required.
-3. Set the runner service environment variable `DI_ENV_FILE` to the absolute path of the host's protected production
-   `.env` file. Optionally set `DI_COMPOSE_PROJECT=digitalinvitation` if the Compose project uses another name.
+3. Create the repository Actions variable `DI_ENV_FILE_PATH` with the absolute path of the host's protected production
+   `.env` file (for example `/opt/digitalinvitation/.env`). Optionally create `DI_COMPOSE_PROJECT` if the Compose project
+   uses another name. The deploy workflow passes these values to the script; alternatively, the runner service may define
+   `DI_ENV_FILE` and `DI_COMPOSE_PROJECT` directly.
 4. Give the runner GHCR pull access. The workflow uses its scoped `GITHUB_TOKEN` to authenticate.
 5. In repository Actions variables, set `DI_DEPLOY_ENABLED=true` only after the runner and production Compose stack
    have been prepared and tested.
