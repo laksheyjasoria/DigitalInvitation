@@ -59,7 +59,10 @@ compose up -d --no-deps frontend
 
 cp "$UPSTREAM_FILE" "${UPSTREAM_FILE}.previous"
 sed -E "s/digital-invitation-backend-(blue|green)/$TARGET/" "$UPSTREAM_FILE" > "${UPSTREAM_FILE}.next"
-# The upstream file is bind-mounted into Nginx. Write in place so the mount\n# sees the updated contents; atomic rename would replace the mounted inode.\ncat "${UPSTREAM_FILE}.next" > "$UPSTREAM_FILE"\nrm -f "${UPSTREAM_FILE}.next"
+# The upstream file is bind-mounted into Nginx. Write in place so the mount
+# sees the updated contents; atomic rename would replace the mounted inode.
+cat "${UPSTREAM_FILE}.next" > "$UPSTREAM_FILE"
+rm -f "${UPSTREAM_FILE}.next"
 
 if ! compose exec -T frontend nginx -t; then
   cat "${UPSTREAM_FILE}.previous" > "$UPSTREAM_FILE"
