@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
@@ -14,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Spring bean wiring are exercised in CI, not merely Java compilation.
  */
 @EnabledIfEnvironmentVariable(named = "CI", matches = "true")
+@AutoConfigureMockMvc
 @SpringBootTest(properties = {
         "app.security.jwt.secret=ci-only-secret-that-is-long-enough-for-hmac-sha256",
         "app.public-base-url=http://localhost:8080",
@@ -30,6 +35,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class DatabaseMigrationSmokeTest {
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private com.app.security.JwtService jwtService;
 
     @Autowired
     private com.app.auth.AuthRateLimitService authRateLimitService;
@@ -78,6 +89,20 @@ class DatabaseMigrationSmokeTest {
                 Integer.class);
         assertTrue(count != null && count == 1,
                 "User authentication version must exist for immediate token revocation");
+    }
+
+    @Test
+    void accessTokenIsRejectedImmediatelyAfterAuthVersionChanges() throws Exception {
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        String email = "auth-version-" + userId + "@example.test";
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status,auth_version) " +
+                "VALUES (?,?,?,'CI user','CUSTOMER','ACTIVE',3)", userId, email, "not-used");
+        String token = jwtService.issue(userId.toString(), email, "CUSTOMER", 3);
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        jdbc.update("UPDATE app_user SET auth_version=4 WHERE id=?", userId);
+        mockMvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
