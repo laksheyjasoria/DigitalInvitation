@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,
                     "/api/v1/auth/register", "/api/v1/auth/verify-email", "/api/v1/auth/login",
                     "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
-                    "/api/v1/auth/refresh", "/api/v1/auth/logout",
+                    "/api/v1/auth/refresh", "/api/v1/auth/logout", "/api/v1/auth/accept-admin-invite",
                     "/api/v1/webhooks/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/**", "/api/v1/catalog/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/public/invitations/*/rsvp").permitAll()
