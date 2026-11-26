@@ -3,7 +3,7 @@
 This implementation is an integration milestone. Do not accept live customers until every applicable gate is completed and signed off.
 
 ## Code and automated verification
-- [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test, Nginx configuration validation and Docker Compose validation passed in recent GitHub Actions runs; the current Master Drive adapter changes require a fresh CI run.
+- [x] The latest code commit (79a0d862) passed GitHub Actions: Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test, Nginx configuration validation and Docker Compose validation. Documentation-only updates followed that tested code commit.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
 - [x] Add configurable per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
