@@ -2,6 +2,7 @@ package com.app.templatestudio;
 
 import com.app.audit.AuditLogService;
 import com.app.common.api.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.HashSet;
@@ -29,14 +30,17 @@ public class TemplateStudioController {
     private final AuditLogService audit;
     private final TemplateDefinitionMapper definitionMapper;
     private final GitHubTemplateReleaseService releaseService;
+    private final ObjectMapper objectMapper;
 
     public TemplateStudioController(JdbcTemplate jdbc, TemplatePackageValidator validator, AuditLogService audit,
-                                    TemplateDefinitionMapper definitionMapper, GitHubTemplateReleaseService releaseService) {
+                                    TemplateDefinitionMapper definitionMapper, GitHubTemplateReleaseService releaseService,
+                                    ObjectMapper objectMapper) {
         this.jdbc = jdbc;
         this.validator = validator;
         this.audit = audit;
         this.definitionMapper = definitionMapper;
         this.releaseService = releaseService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping("/packages")
@@ -235,7 +239,7 @@ public class TemplateStudioController {
         jdbc.update(
                 "INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by,package_resource_path,package_sha256,package_version) " +
                 "VALUES (?,?,?,?::jsonb,?,?,?,?)",
-                templateVersionId, templatePk, nextVersion, new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(definition),
+                templateVersionId, templatePk, nextVersion, objectMapper.writeValueAsString(definition),
                 actor, release.resourcePath(), sha256, packageVersion);
         jdbc.update("UPDATE invitation_template SET display_name=?,description=COALESCE(?,description),status='PUBLISHED',current_version=?,updated_at=now() WHERE id=?",
                 pkg.get("name"), body.get("description") == null ? null : String.valueOf(body.get("description")),
