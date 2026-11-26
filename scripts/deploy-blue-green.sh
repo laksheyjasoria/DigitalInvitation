@@ -55,6 +55,8 @@ if [[ "$HEALTH" != "healthy" ]]; then
   exit 1
 fi
 
+compose up -d --no-deps frontend
+
 cp "$UPSTREAM_FILE" "${UPSTREAM_FILE}.previous"
 sed -E "s/digital-invitation-backend-(blue|green)/$TARGET/" "$UPSTREAM_FILE" > "${UPSTREAM_FILE}.next"
 mv "${UPSTREAM_FILE}.next" "$UPSTREAM_FILE"
@@ -71,6 +73,14 @@ if ! compose exec -T frontend nginx -s reload; then
   compose exec -T frontend nginx -s reload || true
   docker rm -f "$TARGET" >/dev/null 2>&1 || true
   echo "Nginx reload failed; restored the previous backend."
+  exit 1
+fi
+
+if ! compose exec -T frontend wget -qO- --timeout=10 http://127.0.0.1/actuator/health >/dev/null; then
+  mv "${UPSTREAM_FILE}.previous" "$UPSTREAM_FILE"
+  compose exec -T frontend nginx -s reload || true
+  docker rm -f "$TARGET" >/dev/null 2>&1 || true
+  echo "Nginx smoke test failed; restored the previous backend."
   exit 1
 fi
 
