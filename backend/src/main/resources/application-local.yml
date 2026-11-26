@@ -2,7 +2,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/digital_invitation}
     username: ${SPRING_DATASOURCE_USERNAME:digital_invitation}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    password: ${SPRING_DATASOURCE_PASSWORD:digital_invitation_local_only}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -10,7 +10,20 @@ spring:
 logging:
   level:
     root: INFO
+    org.springframework.security: INFO
 
 app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
   security:
+    jwt:
+      # Local-development secret only. Production profile requires an externally supplied secret.
+      secret: ${APP_JWT_SECRET:local-development-only-secret-do-not-use-in-production-2026}
     refresh-cookie-secure: false
+  mail:
+    enabled: false
+  payment:
+    razorpay:
+      enabled: false
+  storage:
+    fileserver:
+      enabled: false
