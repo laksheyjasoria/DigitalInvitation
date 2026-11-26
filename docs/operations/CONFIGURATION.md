@@ -8,7 +8,7 @@ Business settings are stored in system_setting and changed through the admin API
 |---|---:|---|
 | invitation.expiry.grace-days | 7 | Calendar days after last function date |
 | invitation.default-timezone | Asia/Kolkata | Default event timezone |
-| invitation.publication.payment-required | true | Require a paid order before publish |
+| invitation.publication.payment-required | false (V13 rollout) | Require a paid order before publish; enable only after payment provider setup |
 | invitation.preview.enabled | true | Preview feature flag |
 | invitation.custom-sections.enabled | true | Customer custom sections |
 | invitation.rsvp.enabled | false | RSVP feature flag |
@@ -64,7 +64,7 @@ The adapter defaults to a 300-second upload completion timeout and polls every 1
 
 ## Payment configuration (deferred)
 
-Razorpay remains disabled by default. Do not set `APP_RAZORPAY_ENABLED=true` until credentials, webhook URL/signature verification and sandbox capture/failure/replay tests are completed. The invitation payment-required business setting remains independently configurable; do not mark an order paid or publish a paid invitation manually to bypass provider verification.
+Payment is intentionally not required in the initial rollout: migration V13 sets `invitation.publication.payment-required=false` and `payment.provider=NONE`. Customers can complete consent and publish without checkout. Razorpay remains disabled by default. Do not set `APP_RAZORPAY_ENABLED=true` or switch the payment-required setting to true until credentials, webhook URL/signature verification and sandbox capture/failure/replay tests are completed. Once enabled, all payment settlement must be provider-verified; do not mark an order paid manually.
 
 ## Local Docker
 
