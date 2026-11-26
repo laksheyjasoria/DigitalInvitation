@@ -77,6 +77,7 @@ function fieldMeta(field,section){
  return {key,label:labels[key]||key.replace(/([A-Z])/g," $1").replace(/^./,c=>c.toUpperCase()),type:/date/i.test(key)?"date":/email/i.test(key)?"email":/phone|mobile|contact/i.test(key)?"text":/url|website/i.test(key)?"url":/message|intro|description|body|note/i.test(key)?"textarea":"text",required:(section.requiredFields||[]).includes(key),placeholder:""};
 }
 function renderSections(){
+ document.body.classList.toggle("xml-template-locked",templateDefinition?.packageFormat==="XML_PACKAGE");
  if(!templateDefinition)templateDefinition={sections:[]};
  if(!Array.isArray(templateDefinition.sections))templateDefinition.sections=[];
  const known=new Set(templateDefinition.sections.map(section=>section.key));
