@@ -5,7 +5,9 @@ Authenticated endpoints use Authorization: Bearer <access-token>. Responses use 
 ## Authentication
 - POST /api/v1/auth/register — create account and queue email verification.
 - POST /api/v1/auth/verify-email — consume verification token.
-- POST /api/v1/auth/login — issue short-lived access JWT.
+- POST /api/v1/auth/login — issue short-lived access JWT and set a rotating HttpOnly refresh cookie.
+- POST /api/v1/auth/refresh — rotate the refresh cookie and issue a new access JWT.
+- POST /api/v1/auth/logout — revoke the current refresh session and clear its cookie.
 - POST /api/v1/auth/forgot-password — request a reset email without account enumeration.
 - POST /api/v1/auth/reset-password — consume one-time reset token.
 - GET /api/v1/auth/me — current user.
@@ -34,6 +36,7 @@ Authenticated endpoints use Authorization: Bearer <access-token>. Responses use 
 - GET /api/v1/invitations/{id}/media — list owner's media.
 - GET /api/v1/invitations/{id}/media/{mediaId}/content — authenticated private stream.
 - PATCH /api/v1/invitations/{id}/media/{mediaId}/visibility — set PRIVATE or PUBLIC.
+- DELETE /api/v1/invitations/{id}/media/{mediaId} — delete the owner's media object and metadata.
 
 ## Payments
 - POST /api/v1/invitations/{id}/orders — create order from configured price.
@@ -52,6 +55,7 @@ Authenticated endpoints use Authorization: Bearer <access-token>. Responses use 
 - POST /api/v1/admin/policies/{TERMS|PRIVACY}
 
 ## Important behavior
+- Access JWTs carry the user's auth version and are rejected immediately after account suspension, role changes or password reset. Refresh tokens rotate in HttpOnly, SameSite cookies; configure Secure cookies for HTTPS deployments.
 - Public URLs use random 192-bit slugs, not database IDs.
 - Public invitation access checks revocation and expiry on every request.
 - QR images remain retrievable after expiry; the encoded URL then displays the expired page.
