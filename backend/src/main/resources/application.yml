@@ -69,17 +69,22 @@ app:
     fileserver:
       enabled: ${APP_FILESERVER_ENABLED:false}
       base-url: ${APP_FILESERVER_BASE_URL:}
-      service-token: ${APP_FILESERVER_SERVICE_TOKEN:}
-      upload-path: ${APP_FILESERVER_UPLOAD_PATH:/master-drive/files}
-      stream-path: ${APP_FILESERVER_STREAM_PATH:/master-drive/files/{id}/stream}
-      delete-path: ${APP_FILESERVER_DELETE_PATH:/master-drive/files/{id}}
+      master-key: ${APP_FILESERVER_MASTER_KEY:}
+      master-drive-id: ${APP_FILESERVER_MASTER_DRIVE_ID:}
+      master-drive-name: ${APP_FILESERVER_MASTER_DRIVE_NAME:DigitalInvitation}
+      upload-path: ${APP_FILESERVER_UPLOAD_PATH:/master-drive/{driveId}/files/upload}
+      status-path: ${APP_FILESERVER_STATUS_PATH:/master-drive/uploads/{uploadId}/status}
+      download-path: ${APP_FILESERVER_DOWNLOAD_PATH:/master-drive/files/{fileId}/download}
+      delete-path: ${APP_FILESERVER_DELETE_PATH:/master-drive/files/{fileId}}
+      upload-timeout-seconds: ${APP_FILESERVER_UPLOAD_TIMEOUT_SECONDS:300}
+      poll-interval-millis: ${APP_FILESERVER_POLL_INTERVAL_MILLIS:1000}
   bootstrap:
     admin:
       email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
       password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
   invitation:
     expiry:
-      cron: ${APP_INVITATION_EXPIRY_CRON:0 */15 * * * *}
+      cron: ${APP_INVITATION_EXPIRY_CRON:0 */15 * * * *
 
   mail:
     enabled: ${APP_MAIL_ENABLED:false}
