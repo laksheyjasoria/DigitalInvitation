@@ -74,7 +74,6 @@ public class InvitationController {
         }
         return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
     }
-    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/{id}/publish") @org.springframework.transaction.annotation.Transactional
     public ApiResponse<?> publish(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
