@@ -59,7 +59,7 @@ if (
   exit 1
 fi
 grep -q "digital-invitation-backend-blue" "$ROLLBACK/deploy/nginx/upstream.conf"
-grep -q "docker rm -f digital-invitation-backend-green" "$ROLLBACK/docker.log"
+grep -q "rm -f digital-invitation-backend-green" "$ROLLBACK/docker.log"
 
 HEALTH_FAILURE="$TMP/health-failure"
 make_fixture "$HEALTH_FAILURE"
