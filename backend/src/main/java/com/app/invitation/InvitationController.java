@@ -167,6 +167,8 @@ public class InvitationController {
             com.fasterxml.jackson.databind.JsonNode template=mapper.readTree(definition);
             com.fasterxml.jackson.databind.JsonNode content;
             if(rawContent instanceof String value)content=mapper.readTree(value);else content=mapper.valueToTree(rawContent==null?Map.of():rawContent);
+            Boolean xmlPackage=jdbc.queryForObject("SELECT definition_format='XML_PACKAGE' FROM invitation_template_version WHERE id=?",Boolean.class,templateVersionId);
+            if(Boolean.TRUE.equals(xmlPackage)) validateXmlPackageStructure(template,content);
             com.fasterxml.jackson.databind.JsonNode savedSections=content.path("sections");
             for(com.fasterxml.jackson.databind.JsonNode section:template.path("sections")){
                 String key=section.path("key").asText("");
@@ -207,6 +209,46 @@ public class InvitationController {
         }catch(IllegalArgumentException e){throw e;}
         catch(Exception e){throw new IllegalArgumentException("Unable to validate invitation fields against the selected template");}
     }
+    private void validateXmlPackageStructure(com.fasterxml.jackson.databind.JsonNode template,com.fasterxml.jackson.databind.JsonNode content){
+        com.fasterxml.jackson.databind.JsonNode definitions=template.path("sections");
+        com.fasterxml.jackson.databind.JsonNode supplied=content.path("sections");
+        if(!definitions.isArray()||!supplied.isArray()||definitions.size()!=supplied.size())
+            throw new IllegalArgumentException("Template sections cannot be added or removed");
+        for(int i=0;i<definitions.size();i++){
+            com.fasterxml.jackson.databind.JsonNode definition=definitions.get(i);
+            com.fasterxml.jackson.databind.JsonNode section=supplied.get(i);
+            String key=definition.path("key").asText("");
+            if(!key.equals(section.path("key").asText("")))
+                throw new IllegalArgumentException("Template sections cannot be reordered or replaced");
+            if(!definition.path("label").asText("").equals(section.path("label").asText("")))
+                throw new IllegalArgumentException("Template section names cannot be changed");
+            java.util.Map<String,Boolean> allowed=new java.util.HashMap<>();
+            for(com.fasterxml.jackson.databind.JsonNode field:definition.path("fields")){
+                String fieldKey=field.isTextual()?field.asText():field.path("key").asText("");
+                if(!fieldKey.isBlank())allowed.put(fieldKey,field.path("removable").asBoolean(false));
+            }
+            java.util.Set<String> required=new java.util.HashSet<>();
+            for(com.fasterxml.jackson.databind.JsonNode field:definition.path("requiredFields"))required.add(field.asText());
+            for(com.fasterxml.jackson.databind.JsonNode hidden:section.path("hiddenFields")){
+                String fieldKey=hidden.asText();
+                if(!allowed.containsKey(fieldKey)||!Boolean.TRUE.equals(allowed.get(fieldKey))||required.contains(fieldKey))
+                    throw new IllegalArgumentException("Only optional template fields can be removed");
+            }
+            validateAllowedFieldKeys(section.path("values"),allowed);
+            com.fasterxml.jackson.databind.JsonNode items=section.path("items");
+            if(items.isArray())for(com.fasterxml.jackson.databind.JsonNode item:items)validateAllowedFieldKeys(item,allowed);
+        }
+    }
+
+    private void validateAllowedFieldKeys(com.fasterxml.jackson.databind.JsonNode values,java.util.Map<String,Boolean> allowed){
+        if(!values.isObject())return;
+        var fields=values.fieldNames();
+        while(fields.hasNext()){
+            String field=fields.next();
+            if(!allowed.containsKey(field))throw new IllegalArgumentException("This template does not allow custom fields");
+        }
+    }
+
     private boolean hasText(com.fasterxml.jackson.databind.JsonNode value){
         return value!=null&&!value.isMissingNode()&&!value.isNull()&&!value.asText("").isBlank();
     }
