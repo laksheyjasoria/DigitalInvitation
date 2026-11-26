@@ -46,7 +46,19 @@ async function load() {
     const content = snapshot.content || {};
     locale = content.locale === "hi" ? "hi" : "en";
     document.documentElement.lang = locale;
-    window.InvitationRenderer.render($("invitation-render"), snapshot);
+    if (snapshot.templatePackagePreview) {
+      const frame = document.createElement("iframe");
+      frame.title = snapshot.title || "Invitation";
+      frame.setAttribute("sandbox", "allow-scripts");
+      frame.style.width = "100%";
+      frame.style.minHeight = "760px";
+      frame.style.border = "0";
+      frame.style.display = "block";
+      $("invitation-render").replaceChildren(frame);
+      window.TemplatePackageRenderer.renderIntoFrame(frame, snapshot.templatePackagePreview, snapshot);
+    } else {
+      window.InvitationRenderer.render($("invitation-render"), snapshot);
+    }
     document.body.classList.add("invitation-page");
     document.documentElement.dataset.invitationFont = snapshot.design?.font === "sans" ? "sans" : "serif";
 
