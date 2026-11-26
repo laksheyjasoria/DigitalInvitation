@@ -2,7 +2,9 @@ package com.app.templatestudio;
 
 import com.app.audit.AuditLogService;
 import com.app.common.api.ApiResponse;
-import java.sql.Types;
+import java.io.ByteArrayOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,6 +41,34 @@ public class TemplateStudioController {
         List<byte[]> rows = jdbc.query("SELECT archive_bytes FROM template_package_stage WHERE id=? AND status IN ('VALIDATED','QUEUED_FOR_RELEASE','RELEASED')", (rs,n) -> rs.getBytes(1), id);
         if(rows.isEmpty()) throw new IllegalArgumentException("Validated staged template package not found");
         return ApiResponse.success(definitionMapper.map(rows.get(0)));
+    }
+
+    @PostMapping(value = "/packages/files", consumes = "multipart/form-data")
+    @Transactional
+    public ApiResponse<?> uploadFiles(@RequestParam("files") List<MultipartFile> files, Authentication authentication) throws Exception {
+        if (files == null || files.isEmpty() || files.size() > 150) throw new IllegalArgumentException("Select between 1 and 150 template files");
+        long total = files.stream().mapToLong(MultipartFile::getSize).sum();
+        if (total <= 0 || total > 25L * 1024 * 1024) throw new IllegalArgumentException("Combined template files must not exceed 25 MB");
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(bytes)) {
+            for (MultipartFile part : files) {
+                String name = part.getOriginalFilename();
+                if (name == null || name.isBlank() || part.isEmpty()) throw new IllegalArgumentException("Every selected file must have a filename and content");
+                zip.putNextEntry(new ZipEntry(name));
+                part.getInputStream().transferTo(zip);
+                zip.closeEntry();
+            }
+        }
+        byte[] archive = bytes.toByteArray();
+        TemplatePackageValidator.ValidationResult result = validator.validate(archive);
+        UUID id = UUID.randomUUID();
+        UUID actor = UUID.fromString(authentication.getName());
+        jdbc.update("INSERT INTO template_package_stage(id,template_id,template_name,package_version,archive_bytes,status,file_count,expanded_bytes,sha256,uploaded_by,validated_at) VALUES (?,?,?,?,?,'VALIDATED',?,?,?,?,now())",
+                id, result.templateId(), result.templateName(), result.version(), archive, result.fileCount(), result.expandedBytes(), result.sha256(), actor);
+        audit.record(actor, "TEMPLATE_FILES_STAGED", "TEMPLATE_PACKAGE", id.toString(), "SUCCESS",
+                Map.of("templateId", result.templateId(), "version", result.version(), "sha256", result.sha256()));
+        return ApiResponse.success(Map.of("id", id, "templateId", result.templateId(), "name", result.templateName(),
+                "version", result.version(), "status", "VALIDATED", "fileCount", result.fileCount(), "sha256", result.sha256()));
     }
 
     @PostMapping(value = "/packages", consumes = "multipart/form-data")
