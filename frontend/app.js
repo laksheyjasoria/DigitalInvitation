@@ -87,3 +87,40 @@ $("create-order").addEventListener("click",async()=>{try{await saveDraft();const
 $("resume-checkout").addEventListener("click",async()=>{try{const detail=await api("/invitations/"+activeInvitation);const orderId=detail.order_id;if(!orderId)throw new Error("No pending order was found");const checkout=await api("/payments/"+orderId+"/checkout",{method:"POST",body:"{}"});if(!window.Razorpay)throw new Error("Checkout script did not load");new window.Razorpay({key:checkout.keyId,order_id:checkout.providerOrder.id,amount:checkout.providerOrder.amount,currency:checkout.providerOrder.currency,name:"DigitalInvitation",description:"Digital invitation",handler:async response=>{try{await api("/payments/"+orderId+"/verify",{method:"POST",body:JSON.stringify({providerOrderId:response.razorpay_order_id,providerPaymentId:response.razorpay_payment_id,signature:response.razorpay_signature})});$("resume-checkout").classList.add("hidden");$("publish-invitation").classList.remove("hidden");$("payment-message").textContent="Payment verified. Publish your invitation when ready.";}catch(e){$("payment-message").textContent=e.message;}}}).open();}catch(e){$("payment-message").textContent=e.message;}});
 $("publish-invitation").addEventListener("click",async()=>{try{const result=await api("/invitations/"+activeInvitation+"/publish",{method:"POST",body:"{}"});$("published-result").classList.remove("hidden");$("published-result").innerHTML='<p><strong>Your invitation is live.</strong></p><p><a target="_blank" rel="noopener" href="'+escapeHtml(result.url)+'">'+escapeHtml(result.url)+'</a></p><img width="180" height="180" alt="Invitation QR code" src="'+API+'/public/invitations/'+encodeURIComponent(result.slug)+'/qr"><p class="muted">The QR code always points to this invitation URL. After the validity period, visitors will see the expired page.</p>'; $("payment-message").textContent="Published successfully.";}catch(e){$("payment-message").textContent=e.message;}});
 (async()=>{if(!token)await refreshAccessToken();if(token)showWorkspace();else showAuth();})();
+
+
+// Invitation media library: private by default; public access is an explicit owner action.
+async function loadMedia(){
+ if(!activeInvitation)return;
+ $("media-manager").classList.remove("hidden");
+ try{
+  const rows=await api("/invitations/"+activeInvitation+"/media");
+  $("media-list").innerHTML=rows.length?rows.map(m=>'<div class="invite-item"><strong>'+escapeHtml(m.original_filename)+'</strong><small>'+escapeHtml(m.content_type)+' · '+Math.ceil(Number(m.size_bytes)/1024)+' KB · '+escapeHtml(m.visibility)+'</small><div class="button-row"><button type="button" class="quiet" data-media-visibility="'+m.id+'" data-visibility="'+(m.visibility==="PUBLIC"?"PRIVATE":"PUBLIC")+'">'+(m.visibility==="PUBLIC"?"Make private":"Make public")+'</button><button type="button" class="quiet" data-media-delete="'+m.id+'">Delete</button><button type="button" class="quiet" data-media-copy="'+m.id+'">Copy '+(m.visibility==="PUBLIC"?"public":"private")+' URL</button></div></div>').join(""):'<p class="muted">No images uploaded yet.</p>';
+  document.querySelectorAll("[data-media-visibility]").forEach(b=>b.addEventListener("click",async()=>{
+   try{await api("/invitations/"+activeInvitation+"/media/"+b.dataset.mediaVisibility+"/visibility",{method:"PATCH",body:JSON.stringify({visibility:b.dataset.visibility})});await loadMedia();}
+   catch(e){$("media-message").textContent=e.message;}
+  }));
+  document.querySelectorAll("[data-media-delete]").forEach(b=>b.addEventListener("click",async()=>{
+   if(!confirm("Delete this image from the invitation?"))return;
+   try{await api("/invitations/"+activeInvitation+"/media/"+b.dataset.mediaDelete,{method:"DELETE"});await loadMedia();}
+   catch(e){$("media-message").textContent=e.message;}
+  }));
+  document.querySelectorAll("[data-media-copy]").forEach(b=>b.addEventListener("click",()=>{
+   const row=rows.find(x=>x.id===b.dataset.mediaCopy);if(!row)return;
+   const path=row.visibility==="PUBLIC"?location.origin+API+"/public/media/"+row.id:location.origin+API+"/invitations/"+activeInvitation+"/media/"+row.id+"/content";
+   navigator.clipboard?.writeText(path).then(()=>$("media-message").textContent="Media URL copied. Private URLs require an authenticated session.").catch(()=>$("media-message").textContent=path);
+  }));
+ }catch(e){$("media-list").innerHTML='<p class="error">'+escapeHtml(e.message)+'</p>';}
+}
+$("upload-media").addEventListener("click",async()=>{
+ const file=$("media-file").files?.[0];if(!file){$("media-message").textContent="Choose an image first.";return;}
+ if(!activeInvitation){$("media-message").textContent="Save the invitation draft before uploading media.";return;}
+ const form=new FormData();form.append("file",file);
+ try{
+  const send=()=>fetch(API+"/invitations/"+activeInvitation+"/media",{method:"POST",credentials:"same-origin",headers:token?{Authorization:"Bearer "+token}:{},body:form});
+  let response=await send();if(response.status===401&&await refreshAccessToken())response=await send();
+  const body=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(body.error?.message||body.message||"Image upload failed ("+response.status+")");
+  $("media-file").value="";$("media-message").textContent="Image uploaded privately to the configured storage provider.";await loadMedia();
+ }catch(e){$("media-message").textContent=e.message;}
+});
