@@ -22,7 +22,7 @@ public class AuthRateLimitService {
                 "SELECT COALESCE(blocked_until > now(),false) FROM auth_login_attempt_bucket WHERE bucket_key=?",
                 rs -> rs.next() ? rs.getBoolean(1) : false, key);
         if (Boolean.TRUE.equals(blocked)) {
-            throw new LoginRateLimitException();
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, "Too many sign-in attempts. Please wait 15 minutes and try again.");
         }
     }
 
@@ -59,12 +59,6 @@ public class AuthRateLimitService {
                     .digest(normalized.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception ex) {
             throw new IllegalStateException("Unable to calculate login rate-limit key", ex);
-        }
-    }
-
-    public static final class LoginRateLimitException extends RuntimeException {
-        public LoginRateLimitException() {
-            super("Too many sign-in attempts. Please wait 15 minutes and try again.");
         }
     }
 }
