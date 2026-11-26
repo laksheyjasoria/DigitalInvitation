@@ -25,7 +25,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 // Public website and static frontend assets. API authorization remains explicit below.
                 .requestMatchers("/", "/index.html", "/site.css", "/home.js", "/app.html", "/app.css", "/app.js",
-                    "/invitation.html", "/invitation.js", "/forgot.html", "/forgot.js", "/reset.html", "/reset.js",
+                    "/invitation.html", "/invitation.js", "/invitation-renderer.js", "/forgot.html", "/forgot.js", "/reset.html", "/reset.js",
                     "/verify.html", "/verify.js", "/admin.html", "/admin.js", "/favicon.ico", "/i/**").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers(HttpMethod.POST,
