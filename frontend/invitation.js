@@ -46,7 +46,24 @@ async function load() {
     const content = snapshot.content || {};
     locale = content.locale === "hi" ? "hi" : "en";
     document.documentElement.lang = locale;
-    window.InvitationRenderer.render($("invitation-render"), snapshot);
+    if(snapshot.templatePackageRef){
+      const frame=document.createElement("iframe");
+      frame.className="template-package-frame public-template-frame";
+      frame.title="Published invitation";
+      frame.setAttribute("sandbox","allow-scripts");
+      frame.src="/template-preview/"+encodeURIComponent(snapshot.templatePackageRef);
+      $("invitation-render").replaceChildren(frame);
+      frame.addEventListener("load",()=>{
+        const values={};
+        (content.sections||[]).filter(section=>section.enabled!==false).forEach(section=>{
+          Object.assign(values,section.values||{});
+          if(Array.isArray(section.items)&&section.items.length)Object.assign(values,section.items[0]||{});
+        });
+        frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:{title:snapshot.title||"",values}},"*");
+      },{once:true});
+    }else{
+      window.InvitationRenderer.render($("invitation-render"), snapshot);
+    }
     document.body.classList.add("invitation-page");
     document.documentElement.dataset.invitationFont = snapshot.design?.font === "sans" ? "sans" : "serif";
 
