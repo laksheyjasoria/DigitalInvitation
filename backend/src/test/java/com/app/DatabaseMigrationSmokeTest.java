@@ -34,6 +34,9 @@ class DatabaseMigrationSmokeTest {
     @Autowired
     private com.app.auth.AuthRateLimitService authRateLimitService;
 
+    @Autowired
+    private com.app.invitation.PublicSubmissionRateLimitService publicSubmissionRateLimitService;
+
     @Test
     void configurableTimezoneOptionsAreSeeded() {
         String configured = jdbc.queryForObject(
@@ -58,14 +61,24 @@ class DatabaseMigrationSmokeTest {
     }
 
     @Test
+    void publicRsvpSubmissionsAreThrottledPerPublicationAndClient() {
+        java.util.UUID publicationId = java.util.UUID.randomUUID();
+        for (int attempt = 0; attempt < 5; attempt++) {
+            publicSubmissionRateLimitService.assertAllowed(publicationId, "192.0.2.20");
+        }
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> publicSubmissionRateLimitService.assertAllowed(publicationId, "192.0.2.20"));
+    }
+
+    @Test
     void flywayCreatesCorePlatformTables() {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM information_schema.tables " +
                 "WHERE table_schema='public' AND table_name IN " +
                 "('app_user','system_setting','invitation','invitation_publication'," +
-                "'customer_order','payment_transaction','invitation_rsvp','invitation_extension','auth_login_attempt_bucket','auth_refresh_session')",
+                "'customer_order','payment_transaction','invitation_rsvp','invitation_extension','auth_login_attempt_bucket','auth_refresh_session','public_submission_bucket')",
                 Integer.class);
-        assertTrue(count != null && count == 10,
+        assertTrue(count != null && count == 11,
                 "All core platform tables should exist after Flyway migration");
     }
 }
