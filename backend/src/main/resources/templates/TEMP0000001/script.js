@@ -1,1 +1,9 @@
-(function(){const params=new URLSearchParams(location.search);document.querySelectorAll("[data-field]").forEach(node=>{const key=node.dataset.field;const value=params.get(key);if(value)node.textContent=value;});})();
+(() => {
+  const root = document.querySelector(".invitation");
+  if (root && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    root.classList.add("is-ready");
+    document.querySelectorAll(".function").forEach((item, index) => {
+      item.style.animationDelay = (index * 180) + "ms";
+    });
+  }
+})();
