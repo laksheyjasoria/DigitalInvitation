@@ -50,20 +50,22 @@ function renderCategories(rows){
   catch(e){msg(e.message);}
  }));
 }
+const templateDefinitions=new Map();
 function renderTemplates(rows){
+ templateDefinitions.clear();
  $("templates").innerHTML=rows.map(t=>{
-  const definition=escapeHtml(t.definition||"{}");
+  try{templateDefinitions.set(t.id,JSON.parse(t.definition||"{}"));}catch(_){templateDefinitions.set(t.id,{});}
   return '<article class="setting-row"><strong>'+escapeHtml(t.display_name)+'</strong> · '+escapeHtml(t.category_name)+' · '+escapeHtml(t.template_key)+
    ' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+
    '<div class="button-row"><button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Publish")+'</button>'+
-   '<button class="quiet" data-template-version="'+t.id+'" data-definition="'+definition.replace(/"/g,"&quot;")+'">Create new version</button></div></article>';
+   '<button class="quiet" data-template-version="'+t.id+'">Create new version</button></div></article>';
  }).join("");
  document.querySelectorAll("[data-template-status]").forEach(b=>b.addEventListener("click",async()=>{
   try{await api("/admin/templates/"+b.dataset.templateStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});msg("Template status updated.");await load();}
   catch(e){msg(e.message);}
  }));
  document.querySelectorAll("[data-template-version]").forEach(b=>b.addEventListener("click",async()=>{
-  const initial=b.dataset.definition||"{}";
+  const initial=JSON.stringify(templateDefinitions.get(b.dataset.templateVersion)||{},null,2);
   const entered=prompt("Edit template definition JSON for the new version:",initial);
   if(entered===null)return;
   let definition;try{definition=JSON.parse(entered);}catch(_){msg("Invalid JSON. No version was created.");return;}
