@@ -43,7 +43,7 @@ class TemplateDefinitionMapperTest {
     }
 
     private byte[] zip() throws Exception {
-        String xml = "<template id=\"TEMP0000001\" name=\"Garden\" version=\"1.0\" schemaVersion=\"1\"><sections><section key=\"hero\" label=\"Invitation\"><field key=\"headline\" label=\"Heading\" type=\"text\" required=\"true\"/></section><section key=\"details\" label=\"Details\" optional=\"true\"><field key=\"date\" label=\"Date\" type=\"date\"/></section><section key=\"events\" label=\"Events\" repeatable=\"true\"><field key=\"eventName\" label=\"Function\" type=\"text\"/></section></sections></template>";
+        String xml = "<template id=\"TEMP0000001\" name=\"Garden\" version=\"1.0\" schemaVersion=\"1\"><sections><section key=\"hero\" label=\"Invitation\"><field key=\"headline\" label=\"Heading\" type=\"text\" required=\"true\"/><field key=\"tagline\" label=\"Tagline\" type=\"longtext\" optional=\"true\"/></section><section key=\"details\" label=\"Details\" optional=\"true\"><field key=\"date\" label=\"Date\" type=\"date\"/></section><section key=\"events\" label=\"Events\" repeatable=\"true\"><field key=\"eventName\" label=\"Function\" type=\"text\"/></section></sections></template>";
         String preview = "<preview><hero><headline>Join us</headline></hero><details><date>2027-01-01</date></details><events><item><eventName>Welcome</eventName></item><item><eventName>Ceremony</eventName></item></events></preview>";
         try (ByteArrayOutputStream bytes = new ByteArrayOutputStream(); ZipOutputStream zip = new ZipOutputStream(bytes)) {
             add(zip, "template.xml", xml);
