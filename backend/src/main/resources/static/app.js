@@ -96,7 +96,30 @@ async function openInvitation(id){try{const i=await api("/invitations/"+id);acti
  }
  if(state==="PENDING_PAYMENT"&&i.order_status==="FAILED")$("payment-message").textContent="The previous payment attempt failed. Update your draft and try again.";
 } catch(e){alert(e.message);}}
-$("preview").addEventListener("click",()=>{try{const content=readContent();const sectionHtml=content.sections.filter(section=>section.enabled&&(section.key==="hero"||Object.keys(section.values||{}).length>0||(section.items||[]).some(item=>Object.keys(item).length>0))).map(section=>{const values=Object.entries(section.values||{}).map(([key,value])=>'<p><strong>'+escapeHtml(key)+'</strong><span>'+escapeHtml(value)+'</span></p>').join("");const items=(section.items||[]).map((item,index)=>'<article><h3>'+escapeHtml(item.eventName||("Function "+(index+1)))+'</h3>'+Object.entries(item).filter(([key])=>key!=="eventName").map(([key,value])=>'<p><strong>'+escapeHtml(key)+'</strong><span>'+escapeHtml(value)+'</span></p>').join("")+'</article>').join("");return '<section class="section-card"><h3>'+escapeHtml(section.label)+'</h3>'+values+items+'</section>';}).join("");const design=templateDefinition?.design||{};const allowed=["floral","royal","minimal","romantic","playful","elegant","botanical","bold","festive","classic"];const style=allowed.includes(design.style)?design.style:"classic";const box=$("preview-box");box.className="preview invitation-preview theme-"+style;Object.entries({"--invitation-background":design.palette?.background,"--invitation-surface":design.palette?.surface,"--invitation-text":design.palette?.text,"--invitation-accent":design.palette?.accent,"--invitation-muted":design.palette?.muted}).forEach(([name,value])=>{if(typeof value==="string"&&/^#[0-9a-f]{6}$/i.test(value))box.style.setProperty(name,value);});$("preview-box").innerHTML='<p class="eyebrow">YOU ARE INVITED</p><h2>'+escapeHtml($("invite-title").value)+'</h2>'+sectionHtml;$("preview-box").classList.remove("hidden");}catch(e){$("payment-message").textContent=e.message;}});
+function renderInvitationPreview(){
+ const content=readContent();
+ const visible=content.sections.filter(section=>section.enabled);
+ const sectionHtml=visible.map(section=>{
+  const values=Object.entries(section.values||{}).map(([key,value])=>'<p><strong>'+escapeHtml(key)+'</strong><span>'+escapeHtml(value)+'</span></p>').join("");
+  const items=(section.items||[]).map((item,index)=>'<article><h3>'+escapeHtml(item.eventName||("Function "+(index+1)))+'</h3>'+Object.entries(item).filter(([key])=>key!=="eventName").map(([key,value])=>'<p><strong>'+escapeHtml(key)+'</strong><span>'+escapeHtml(value)+'</span></p>').join("")+'</article>').join("");
+  if(!values&&!items&&!section.label)return "";
+  return '<section class="section-card"><h3>'+escapeHtml(section.label||"")+'</h3>'+values+items+'</section>';
+ }).join("");
+ const design=templateDefinition?.design||{};
+ const allowed=["floral","royal","minimal","romantic","playful","elegant","botanical","bold","festive","classic"];
+ const style=allowed.includes(design.style)?design.style:"classic";
+ const box=$("preview-box");
+ box.className="preview invitation-preview theme-"+style;
+ for(const name of ["--invitation-background","--invitation-surface","--invitation-text","--invitation-accent","--invitation-muted"])box.style.removeProperty(name);
+ Object.entries({"--invitation-background":design.palette?.background,"--invitation-surface":design.palette?.surface,"--invitation-text":design.palette?.text,"--invitation-accent":design.palette?.accent,"--invitation-muted":design.palette?.muted}).forEach(([name,value])=>{if(typeof value==="string"&&/^#[0-9a-f]{6}$/i.test(value))box.style.setProperty(name,value);});
+ const title=$("invite-title").value.trim()||"Your celebration";
+ const functionDate=$("function-date").value;
+ box.innerHTML='<p class="eyebrow">YOU ARE INVITED</p><h2>'+escapeHtml(title)+'</h2>'+(functionDate?'<p>'+escapeHtml(functionDate)+'</p>':"")+sectionHtml;
+ box.classList.remove("hidden");
+}
+$("preview").type="button";
+$("preview-toggle").type="button";
+$("preview").addEventListener("click",()=>{try{renderInvitationPreview();$("preview-box").scrollIntoView({behavior:"smooth",block:"nearest"});}catch(e){$("payment-message").textContent=e.message;}});
 $("preview-toggle").addEventListener("click",()=>$("preview").click());
 const declarations=[["accuracy","I confirm that names, dates, venues and invitation details are accurate."],["preview","I have reviewed and approve the invitation preview."],["rights","I have permission to upload and publish all submitted content and personal information."],["expiry","I understand the invitation validity and expiry policy displayed at checkout."],["publication","I understand that content I publish will be accessible to anyone with its unique link."],["terms","I agree to the applicable Terms and Conditions."],["privacy","I acknowledge the applicable Privacy Policy."]];
 $("consent-items").innerHTML=declarations.map(([key,label])=>'<label class="consent"><input id="consent-'+key+'" type="checkbox"><span>'+escapeHtml(label)+'</span></label>').join("");
