@@ -81,6 +81,8 @@ jobs:
           node --check frontend/forgot.js
           node --check frontend/reset.js
           node --check frontend/dev-server.js
+      - name: Verify template package renderer ordering and isolation
+        run: node scripts/test-template-package-renderer.js
       - name: Verify backend and PostgreSQL migrations
         working-directory: backend
         run: mvn --batch-mode verify
