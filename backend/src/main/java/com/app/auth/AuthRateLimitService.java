@@ -17,9 +17,9 @@ public class AuthRateLimitService {
 
     public void assertAllowed(String email, String remoteAddress) {
         String key = key(email, remoteAddress);
-        Boolean blocked = jdbc.queryForObject(
+        Boolean blocked = jdbc.query(
                 "SELECT COALESCE(blocked_until > now(),false) FROM auth_login_attempt_bucket WHERE bucket_key=?",
-                Boolean.class, key);
+                rs -> rs.next() ? rs.getBoolean(1) : false, key);
         if (Boolean.TRUE.equals(blocked)) {
             throw new LoginRateLimitException();
         }
