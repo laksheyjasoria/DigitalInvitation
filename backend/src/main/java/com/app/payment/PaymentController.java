@@ -22,7 +22,7 @@ public class PaymentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
-        if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
+        if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");\n        if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment is required but no payment provider is configured. Configure and verify the provider before enabling paid publication.");
         var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status='DRAFT' FOR UPDATE",id,user);
         long baseAmount=settings.getLong("pricing.base-price-minor");
         BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
