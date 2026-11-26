@@ -47,7 +47,7 @@ public class TemplateStudioController {
     public ApiResponse<?> preview(@PathVariable UUID id) {
         List<byte[]> rows = jdbc.query("SELECT archive_bytes FROM template_package_stage WHERE id=? AND status IN ('VALIDATED','QUEUED_FOR_RELEASE','RELEASED')", (rs,n) -> rs.getBytes(1), id);
         if(rows.isEmpty()) throw new IllegalArgumentException("Validated staged template package not found");
-        return ApiResponse.success(definitionMapper.map(rows.get(0)));
+        return ApiResponse.success(definitionMapper.mapPreview(rows.get(0)));
     }
 
     @PostMapping(value = "/packages/files", consumes = "multipart/form-data")
