@@ -14,6 +14,26 @@ function sampleTemplateContent(definition){
  const samples={headline:"A Beautiful Celebration",hostnames:"Alex & Sam",intro:"Together with our families, we invite you to share a day filled with love and joy.",eventname:"Wedding Ceremony",date:"14 February 2027",time:"4:00 PM",venue:"The Garden Estate",description:"An evening of celebration and togetherness.",heading:"A day to remember",body:"Join us as we make beautiful memories together.",familynames:"The Sharma and Mehta families",note:"Your presence is our greatest gift.",contact:"+91 98765 43210",deadline:"1 February 2027"};
  return {locale:"en",sections:(definition?.sections||[]).map(section=>{const values={};(section.fields||[]).forEach(field=>values[field]=samples[field.toLowerCase()]||"Details to be announced");return {key:section.key,label:section.label,enabled:section.enabled!==false,values:section.repeatable?{}:values,items:section.repeatable?[{eventName:"Wedding Ceremony",date:"14 February 2027",time:"4:00 PM",venue:"The Garden Estate"}]:[]};})};
 }
+function packagePreviewPayload(content,title){
+ const values={};
+ (content?.sections||[]).filter(section=>section.enabled!==false).forEach(section=>{
+  Object.assign(values,section.values||{});
+  if(Array.isArray(section.items)&&section.items.length)Object.assign(values,section.items[0]||{});
+ });
+ return {title:title||$("invite-title")?.value||"Your invitation",values};
+}
+function setPackagePreview(container,definition,content,dummyData){
+ const src=definition?.previewUrl;
+ if(!src)throw new Error("The selected template preview is unavailable.");
+ let frame=container.querySelector("iframe.template-package-frame");
+ if(!frame||frame.dataset.src!==src){
+  container.innerHTML='<iframe class="template-package-frame" title="Animated invitation template preview" sandbox="allow-scripts" src="'+escapeHtml(src)+'"></iframe>';
+  frame=container.querySelector("iframe.template-package-frame");
+  frame.dataset.src=src;
+  frame.addEventListener("load",()=>{const payload=content?packagePreviewPayload(content):dummyData;frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:payload||{}},"*");},{once:true});
+ }else{const payload=content?packagePreviewPayload(content):dummyData;frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:payload||{}},"*");}
+ return frame;
+}
 let galleryChoices=[];
 function chooseTemplate(choice){
  activeInvitation=null;draftContent=null;templateDefinition=choice.def;
@@ -41,7 +61,7 @@ async function showTemplateGallery(categoryId){
  document.querySelectorAll("[data-template-choice]").forEach(b=>b.addEventListener("click",()=>chooseTemplate(galleryChoices[Number(b.dataset.templateChoice)])));
  document.querySelectorAll("[data-template-preview]").forEach(b=>b.addEventListener("click",()=>{
   const choice=galleryChoices[Number(b.dataset.templatePreview)];$("template-preview-title").textContent=choice.t.display_name;
-  window.InvitationRenderer.render($("template-preview-full"),{title:choice.t.display_name,content:sampleTemplateContent(choice.def),design:choice.def?.design||{},layout:choice.def?.layout});
+  if(choice.def?.packageFormat==="XML_PACKAGE")setPackagePreview($("template-preview-full"),choice.def,null,choice.def.previewData);else window.InvitationRenderer.render($("template-preview-full"),{title:choice.t.display_name,content:sampleTemplateContent(choice.def),design:choice.def?.design||{},layout:choice.def?.layout});
   $("template-preview-use").onclick=()=>chooseTemplate(choice);$("template-preview-dialog").showModal();
  }));
 }
