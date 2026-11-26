@@ -14,7 +14,7 @@ class TemplatePackageServiceTest {
 
     @Test
     void loadsXmlTemplateAndItsFieldRules() {
-        Map<String,Object> template=service.getTemplate("TEMP0000001");
+        Map<String,Object> template=service.getTemplate("TEMP0000001-v1");
         assertEquals("Floral Garden",template.get("displayName"));
         assertEquals("WEDDING",template.get("category"));
         assertFalse((Boolean)template.get("customSectionsAllowed"));
@@ -30,7 +30,7 @@ class TemplatePackageServiceTest {
         List<Map<String,Object>> templates=service.listTemplates();
         assertEquals(1,templates.size());
         assertEquals("TEMP0000001",templates.get(0).get("id"));
-        Map<String,Object> preview=service.getPreviewData("TEMP0000001");
+        Map<String,Object> preview=service.getPreviewData("TEMP0000001-v1");
         assertEquals("Alex & Sam",preview.get("title"));
         assertTrue(((Map<?,?>)preview.get("values")).containsKey("venue"));
     }
