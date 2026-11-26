@@ -53,17 +53,20 @@ public class AdminCatalogController {
     public ApiResponse<?> updateCategory(@PathVariable UUID id, @RequestBody Map<String, Object> body,
                                          Authentication auth) {
         var current = jdbc.query("SELECT category_key,display_name,description,enabled,sort_order FROM event_category WHERE id=? FOR UPDATE",
-                (rs, n) -> Map.of(
-                        "key", rs.getString("category_key"),
-                        "name", rs.getString("display_name"),
-                        "description", rs.getString("description") == null ? "" : rs.getString("description"),
-                        "enabled", rs.getBoolean("enabled"),
-                        "sortOrder", rs.getInt("sort_order")), id);
+                (rs, n) -> {
+                    Map<String, Object> row = new java.util.HashMap<>();
+                    row.put("key", rs.getString("category_key"));
+                    row.put("name", rs.getString("display_name"));
+                    row.put("description", rs.getString("description") == null ? "" : rs.getString("description"));
+                    row.put("enabled", rs.getBoolean("enabled"));
+                    row.put("sortOrder", rs.getInt("sort_order"));
+                    return row;
+                }, id);
         if (current.isEmpty()) throw new IllegalArgumentException("Category not found");
         Map<String, Object> old = current.get(0);
         String name = body.containsKey("name") ? string(body.get("name")) : (String) old.get("name");
         String description = body.containsKey("description") ? nullableString(body.get("description")) : (String) old.get("description");
-        boolean enabled = body.containsKey("enabled") ? Boolean.parseBoolean(String.valueOf(body.get("enabled"))) : (Boolean) old.get("enabled");
+        boolean enabled = body.containsKey("enabled") ? parseBoolean(body.get("enabled")) : (Boolean) old.get("enabled");
         int sortOrder = body.containsKey("sortOrder") ? integer(body.get("sortOrder"), "Sort order") : (Integer) old.get("sortOrder");
         if (name.isBlank() || name.length() > 120) throw new IllegalArgumentException("Category name is required and must be at most 120 characters");
         jdbc.update("UPDATE event_category SET display_name=?,description=?,enabled=?,sort_order=?,updated_at=now() WHERE id=?",
@@ -159,7 +162,7 @@ public class AdminCatalogController {
         return result.isBlank() ? null : result;
     }
 
-    private static int integer(Object value, String label) {
+    private static boolean parseBoolean(Object value) {\n        if (value instanceof Boolean result) return result;\n        throw new IllegalArgumentException("Enabled must be true or false");\n    }\n\n    private static int integer(Object value, String label) {
         try {
             return Integer.parseInt(String.valueOf(value));
         } catch (Exception ex) {
