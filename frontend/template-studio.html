@@ -8,6 +8,7 @@
  <section class="panel"><h2>Upload template package</h2>
   <p class="muted">Upload a ZIP containing index.html, styles.css, script.js, template.xml and preview.xml. Optional assets may be placed in an assets/ folder. Maximum ZIP size: 10 MB; maximum expanded size: 25 MB.</p>
   <form id="upload-form"><label>Template ZIP<input id="package-file" type="file" accept=".zip,application/zip" required></label><button class="primary" id="upload-button">Upload and validate</button></form>
+  <h3>Or upload individual files</h3><p class="muted">Select the five required package files together. Preserve the assets/ folder structure when selecting assets.</p><form id="files-upload-form"><label>Template files<input id="package-files" type="file" multiple required accept=".html,.css,.js,.xml,.svg,.png,.jpg,.jpeg,.webp,.woff2,.txt"></label><button class="secondary" id="files-upload-button">Upload selected files</button></form>
   <p class="muted">Uploads are stored in private staging and are not published or pushed to GitHub by this action.</p>
  </section>
  <section class="panel"><h2>Staged packages</h2><div id="packages"><p class="muted">Loading…</p></div></section>
