@@ -28,8 +28,8 @@ Every versioned definition stores:
 - Its own ordered section list and default visibility.
 - A field list for each section; field entries may be simple keys or objects with a key, label, type, placeholder and required flag.
 - `requiredFields` per section. These rules are versioned with the template and are enforced by both the browser and the API. A required section cannot be hidden; a required field cannot be removed.
-- Optional fields can be removed from the customer's invitation and restored later. Optional sections can be hidden, renamed and reordered. Repeatable sections support multiple event or schedule entries.
-- Custom fields and sections only when enabled by the template and platform configuration.
+- Optional fields and sections can be hidden and restored only when the template marks them optional. Required fields and sections cannot be removed. Repeatable sections support multiple event or schedule entries.
+- Customers edit invitation values only. Template-defined field keys, labels, order, layout, colours, fonts, animations and design code remain controlled by the selected template. Customer-created custom fields or sections are not part of the standard editor.
 
 The initial sections cover the invitation hero, schedule/functions, story or event description, family details, gallery, RSVP, travel/dress-code information and footer notes. Templates can omit sections that are not relevant to the event. Customers can hide, rename and reorder sections and add custom fields/sections through the existing builder.
 
