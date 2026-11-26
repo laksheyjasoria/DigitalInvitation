@@ -26,12 +26,17 @@ function setPackagePreview(container,definition,content,dummyData){
  const src=definition?.previewUrl;
  if(!src)throw new Error("The selected template preview is unavailable.");
  let frame=container.querySelector("iframe.template-package-frame");
+ const payload=content?packagePreviewPayload(content):dummyData;
  if(!frame||frame.dataset.src!==src){
   container.innerHTML='<iframe class="template-package-frame" title="Animated invitation template preview" sandbox="allow-scripts" src="'+escapeHtml(src)+'"></iframe>';
   frame=container.querySelector("iframe.template-package-frame");
   frame.dataset.src=src;
-  frame.addEventListener("load",()=>{const payload=content?packagePreviewPayload(content):dummyData;frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:payload||{}},"*");},{once:true});
- }else{const payload=content?packagePreviewPayload(content):dummyData;frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:payload||{}},"*");}
+  frame._diPreviewPayload=payload||{};
+  frame.addEventListener("load",()=>frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:frame._diPreviewPayload||{}},"*"),{once:true});
+ }else{
+  frame._diPreviewPayload=payload||{};
+  frame.contentWindow?.postMessage({type:"INVITATION_PREVIEW",content:frame._diPreviewPayload},"*");
+ }
  return frame;
 }
 let galleryChoices=[];
