@@ -53,6 +53,7 @@ jobs:
         run: |
           node --check frontend/app.js
           node --check frontend/admin.js
+          node --check backend/src/main/resources/static/admin.js
           node --check frontend/invitation.js
           node --check frontend/invitation-renderer.js
           node --check frontend/template-preview-frame.js
@@ -66,6 +67,8 @@ jobs:
           cmp frontend/app.html backend/src/main/resources/static/app.html
           cmp frontend/app.js backend/src/main/resources/static/app.js
           cmp frontend/app.css backend/src/main/resources/static/app.css
+          cmp frontend/admin.html backend/src/main/resources/static/admin.html
+          cmp frontend/admin.js backend/src/main/resources/static/admin.js
           cmp frontend/invitation.html backend/src/main/resources/static/invitation.html
           cmp frontend/invitation.js backend/src/main/resources/static/invitation.js
           cmp frontend/invitation-renderer.js backend/src/main/resources/static/invitation-renderer.js
