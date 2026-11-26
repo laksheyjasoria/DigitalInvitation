@@ -45,9 +45,9 @@ class DatabaseMigrationSmokeTest {
                 "SELECT count(*) FROM information_schema.tables " +
                 "WHERE table_schema='public' AND table_name IN " +
                 "('app_user','system_setting','invitation','invitation_publication'," +
-                "'customer_order','payment_transaction','invitation_rsvp','invitation_extension','auth_login_attempt_bucket')",
+                "'customer_order','payment_transaction','invitation_rsvp','invitation_extension','auth_login_attempt_bucket','auth_refresh_session')",
                 Integer.class);
-        assertTrue(count != null && count == 9,
+        assertTrue(count != null && count == 10,
                 "All core platform tables should exist after Flyway migration");
     }
 }
