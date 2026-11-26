@@ -287,6 +287,7 @@ class DatabaseMigrationSmokeTest {
     }
 
     @Test
+    @org.springframework.transaction.annotation.Transactional
     void adminPublishesValidatedPackageAndCatalogueWaitsForClasspathImage() throws Exception {
         java.util.UUID adminId = java.util.UUID.randomUUID();
         String email = "template-publisher-" + adminId + "@example.test";
