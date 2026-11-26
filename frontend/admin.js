@@ -76,12 +76,14 @@ function renderTemplates(rows){
 async function load(){
  if(!token){msg("Sign in with an administrator account, then refresh this page.");return;}
  try{
-  const [settings,categories,allCategories,templates,users,orders,auditRows]=await Promise.all([
+  const [settings,categories,allCategories,templates,users,orders,auditRows,emailRows]=await Promise.all([
    api("/admin/settings"),api("/catalog/categories"),api("/admin/categories"),api("/admin/templates"),
-   api("/admin/users"),api("/admin/orders"),api("/admin/audit")
+   api("/admin/users"),api("/admin/orders"),api("/admin/audit"),api("/admin/email-outbox")
   ]);
   renderSettings(settings);renderUsers(users);renderCategories(allCategories);renderTemplates(templates);
   $("orders").innerHTML=orders.map(o=>'<div class="setting-row">'+escapeHtml(o.order_number)+' · '+escapeHtml(o.email)+' · '+escapeHtml(o.title)+' · '+escapeHtml(o.currency)+' '+escapeHtml(o.amount_minor)+' · '+escapeHtml(o.status)+'</div>').join("");
+  $("email-outbox").innerHTML=emailRows.map(x=>'<div class="setting-row"><strong>'+escapeHtml(x.template_key)+'</strong> · '+escapeHtml(x.recipient)+' · '+escapeHtml(x.status)+' · attempts '+escapeHtml(x.attempts)+' · '+escapeHtml(x.created_at)+(x.status==="FAILED"?' <button class="quiet" data-email-retry="'+x.id+'">Retry</button>':"")+'</div>').join("")||'<p class="muted">No email delivery records.</p>';
+  document.querySelectorAll("[data-email-retry]").forEach(b=>b.addEventListener("click",async()=>{try{await api("/admin/email-outbox/"+b.dataset.emailRetry+"/retry",{method:"POST",body:"{}"});msg("Email queued for retry.");await load();}catch(e){msg(e.message);}}));
   $("audit").innerHTML=auditRows.map(x=>'<div class="setting-row">'+escapeHtml(x.action)+' · '+escapeHtml(x.resource_type)+' · '+escapeHtml(x.resource_id)+' · '+escapeHtml(x.created_at)+'</div>').join("");
   $("template-category").innerHTML=categories.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.display_name)+'</option>').join("");
  }catch(e){msg(e.message);}
