@@ -90,19 +90,17 @@ function renderSections(){
 }
 function saveSectionDraft(data){draftContent=draftContent||{locale:$("invitation-locale").value||"en",sections:[]};draftContent.sections=draftContent.sections||[];const index=draftContent.sections.findIndex(section=>section.key===data.key);if(index>=0)draftContent.sections[index]=data;else draftContent.sections.push(data);}
 function readContent(){
- const known=new Set((templateDefinition?.sections||[]).map(section=>section.key));
  const sections=[...document.querySelectorAll(".section-card")].map((card,i)=>{
-  const section=templateDefinition.sections[i],hidden=draftContent?.sections?.find(item=>item.key===section.key)?.hiddenFields||[];
+  const section=templateDefinition.sections[i],saved=draftContent?.sections?.find(item=>item.key===section.key)||{},hidden=saved.hiddenFields||[];
   if(section.repeatable){
-   const items=[...card.querySelectorAll(".repeatable-item")].map(item=>{const row={};item.querySelectorAll("[data-field]").forEach(input=>{if(input.value.trim())row[input.dataset.field]=input.value.trim();});return row;});
+   const previousItems=saved.items||[];
+   const items=[...card.querySelectorAll(".repeatable-item")].map((item,index)=>{const row={...(previousItems[index]||{})};item.querySelectorAll("[data-field]").forEach(input=>{const key=input.dataset.field;if(input.value.trim())row[key]=input.value.trim();else delete row[key];});return row;});
    return {key:section.key,label:section.label,enabled:card.querySelector("[data-section]").checked,hiddenFields:hidden,items};
   }
-  const values={};card.querySelectorAll("[data-field]").forEach(input=>{if(input.value.trim())values[input.dataset.field]=input.value.trim();});
+  const values={...(saved.values||{})};card.querySelectorAll("[data-field]").forEach(input=>{const key=input.dataset.field;if(input.value.trim())values[key]=input.value.trim();else delete values[key];});
   return {key:section.key,label:section.label,enabled:card.querySelector("[data-section]").checked,hiddenFields:hidden,values};
  });
- // Preserve legacy customer-created sections in existing drafts without exposing controls to create or edit them.
- const legacy=(draftContent?.sections||[]).filter(section=>!known.has(section.key));
- return {locale:$("invitation-locale").value||"en",sections:[...sections,...legacy]};
+ return {locale:$("invitation-locale").value||"en",sections};
 }
 async function saveDraft(){const title=$("invite-title").value.trim();if(!title)throw new Error("Enter an invitation title");const content=readContent();for(const section of (templateDefinition?.sections||[])){
  const saved=content.sections.find(item=>item.key===section.key);
