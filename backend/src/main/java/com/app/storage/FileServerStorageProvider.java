@@ -18,6 +18,7 @@ public class FileServerStorageProvider implements StorageProvider {
   @Value("${app.storage.fileserver.upload-path:/master-drive/files}")String uploadPath,
   @Value("${app.storage.fileserver.stream-path:/master-drive/files/{id}/stream}")String streamPath,
   @Value("${app.storage.fileserver.delete-path:/master-drive/files/{id}}")String deletePath){
+  if(baseUrl==null||baseUrl.isBlank()||token==null||token.isBlank())throw new IllegalStateException("FileServer storage is enabled but its base URL or service token is missing");
   this.uploadPath=uploadPath;this.streamPath=streamPath;this.deletePath=deletePath;
   this.client=RestClient.builder().baseUrl(baseUrl).defaultHeader("Authorization","Bearer "+token).build();
  }
