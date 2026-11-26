@@ -110,11 +110,12 @@ public class TemplatePackageValidator {
     }
 
     private void validatePath(String name) {
-        if (name == null || name.isBlank() || name.startsWith("/") || name.startsWith("\\")
-                || name.contains("\\") || name.matches("^[A-Za-z]:.*")) {
+        if (name == null || name.isBlank() || name.length() > 180 || name.startsWith("/") || name.startsWith("\\")
+                || name.contains("\\") || name.contains(":") || name.matches("^[A-Za-z]:.*")
+                || name.chars().anyMatch(Character::isISOControl)) {
             throw new IllegalArgumentException("Unsafe ZIP path");
         }
-        for (String segment : name.split("/")) {
+        for (String segment : name.split("/", -1)) {
             if (segment.equals("..") || segment.equals(".") || segment.isBlank()) {
                 throw new IllegalArgumentException("Unsafe ZIP path: " + name);
             }
