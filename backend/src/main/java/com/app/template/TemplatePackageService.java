@@ -33,9 +33,9 @@ public class TemplatePackageService {
             NodeList entries = catalog.getDocumentElement().getElementsByTagName("template");
             List<Map<String,Object>> result = new ArrayList<>();
             for (int i=0;i<entries.getLength();i++) {
-                String id=((Element)entries.item(i)).getAttribute("id");
-                Map<String,Object> t=getTemplate(id);
-                result.add(Map.of("id",id,"displayName",t.get("displayName"),"category",t.get("category"),
+                String packageRef=((Element)entries.item(i)).getAttribute("id");
+                Map<String,Object> t=getTemplate(packageRef);
+                result.add(Map.of("id",t.get("id"),"packageRef",packageRef,"displayName",t.get("displayName"),"category",t.get("category"),
                     "description",t.get("description"),"version",t.get("version"),"previewUrl",t.get("previewUrl")));
             }
             return result;
@@ -48,7 +48,8 @@ public class TemplatePackageService {
         try {
             Document doc=parse(resource("classpath:/templates/"+id+"/template.xml"),templateSchema());
             Element root=doc.getDocumentElement();
-            if(!id.equals(root.getAttribute("id"))) throw new TemplatePackageException("Template package ID does not match its directory");
+            String templateId=id.substring(0,id.indexOf("-v"));
+            if(!templateId.equals(root.getAttribute("id"))) throw new TemplatePackageException("Template package ID does not match its versioned directory");
 
             Map<String,Map<String,Object>> fields=new LinkedHashMap<>();
             NodeList fieldNodes=root.getElementsByTagName("field");
@@ -90,7 +91,7 @@ public class TemplatePackageService {
             }
             verifyPackageFiles(id);
             Map<String,Object> result=new LinkedHashMap<>();
-            result.put("id",id); result.put("displayName",root.getAttribute("displayName"));
+            result.put("id",templateId); result.put("packageRef",id); result.put("displayName",root.getAttribute("displayName"));
             result.put("category",root.getAttribute("category")); result.put("description",root.getAttribute("description"));
             result.put("version",root.getAttribute("version")); result.put("layout",root.getAttribute("layout"));
             result.put("fields",new ArrayList<>(fields.values())); result.put("sections",sections);
@@ -164,6 +165,6 @@ public class TemplatePackageService {
     }
     private static boolean bool(Element e,String name,boolean fallback) { return e.hasAttribute(name)?Boolean.parseBoolean(e.getAttribute(name)):fallback; }
     private static void validateId(String id) {
-        if(id==null || !id.matches("TEMP[0-9]{7}")) throw new TemplatePackageException("Invalid template package ID");
+        if(id==null || !id.matches("TEMP[0-9]{7}-v[0-9]+")) throw new TemplatePackageException("Invalid template package version reference");
     }
 }
