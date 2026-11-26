@@ -210,8 +210,14 @@ class DatabaseMigrationSmokeTest {
                 "AND jsonb_typeof(v.definition->'design'->'palette')='object' " +
                 "AND v.definition->'design'->'palette'->>'accent' IS NOT NULL",
                 Integer.class);
+        String sampleDefinition = jdbc.queryForObject(
+                "SELECT v.definition::text FROM invitation_template t " +
+                "JOIN invitation_template_version v ON v.template_id=t.id " +
+                "WHERE t.template_key='wedding-floral-garden' ORDER BY v.version_number LIMIT 1",
+                String.class);
         assertTrue(styledCount != null && styledCount == 4,
-                "Wedding sample templates should contain a design palette for the public renderer");
+                "Wedding sample templates should contain a design palette for the public renderer. " +
+                "Matching rows=" + styledCount + "; sample definition=" + sampleDefinition);
     }
 
 }
