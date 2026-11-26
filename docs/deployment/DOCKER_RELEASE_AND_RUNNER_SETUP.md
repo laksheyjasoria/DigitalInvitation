@@ -24,7 +24,8 @@ For local development, set these variables in the backend process environment or
 - `APP_GITHUB_TEMPLATE_BASE_BRANCH=main`
 
 The fine-grained token needs repository Contents read/write permission. The first publish creates the release branch
-from the configured base branch if it does not already exist. Do not use a personal token with broader access than
+from the configured base branch if it does not already exist. Before each later package commit, the backend merges the latest
+base-branch changes into the release branch so application fixes and prior template ZIPs are retained. Do not use a personal token with broader access than
 required. Keep `.env` out of Git.
 
 ## Blue-green Docker deployment
