@@ -131,13 +131,13 @@ class DatabaseMigrationSmokeTest {
                         .header("Authorization", "Bearer " + ownerToken))
                 .andExpect(status().isOk());
 
-        Integer lockQueryRows = jdbc.queryForObject(
-                "SELECT count(*) FROM invitation i LEFT JOIN LATERAL " +
+        var lockedRows = jdbc.queryForList(
+                "SELECT i.id,i.title,i.status,o.status order_status FROM invitation i LEFT JOIN LATERAL " +
                 "(SELECT id,status FROM customer_order WHERE invitation_id=i.id ORDER BY created_at DESC LIMIT 1) o ON true " +
-                "WHERE i.id=? AND i.owner_user_id=?",
-                Integer.class, invitationId, ownerId);
-        assertTrue(lockQueryRows != null && lockQueryRows == 1,
-                "Owner-scoped invitation query should return exactly one row");
+                "WHERE i.id=? AND i.owner_user_id=? FOR UPDATE OF i",
+                invitationId, ownerId);
+        assertTrue(lockedRows.size() == 1,
+                "The publication query must lock only the owned invitation row");
     }
 
     @Test
