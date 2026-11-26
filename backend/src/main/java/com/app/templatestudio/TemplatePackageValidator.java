@@ -24,6 +24,11 @@ public class TemplatePackageValidator {
     private static final int MAX_EXPANDED_BYTES = 25 * 1024 * 1024;
     private static final int MAX_ENTRIES = 150;
     private static final Set<String> REQUIRED = Set.of("index.html", "styles.css", "script.js", "template.xml", "preview.xml");
+    private final TemplateDefinitionMapper definitionMapper;
+
+    public TemplatePackageValidator(TemplateDefinitionMapper definitionMapper) {
+        this.definitionMapper = definitionMapper;
+    }
 
     public ValidationResult validate(byte[] archive) {
         if (archive == null || archive.length == 0 || archive.length > MAX_ARCHIVE_BYTES) {
@@ -65,7 +70,10 @@ public class TemplatePackageValidator {
         }
         try {
             Document document = parseAndValidateDefinition(definition);
-            parseSecurely(preview);
+            Document previewDocument = parseSecurely(preview);
+            if (!"preview".equals(previewDocument.getDocumentElement().getTagName()))
+                throw new IllegalArgumentException("preview.xml must have a <preview> root element");
+            definitionMapper.map(archive);
             String id = document.getDocumentElement().getAttribute("id");
             String name = document.getDocumentElement().getAttribute("name");
             String version = document.getDocumentElement().getAttribute("version");
@@ -93,8 +101,8 @@ public class TemplatePackageValidator {
         return document;
     }
 
-    private void parseSecurely(byte[] xml) throws Exception {
-        secureFactory().newDocumentBuilder().parse(new ByteArrayInputStream(xml));
+    private Document parseSecurely(byte[] xml) throws Exception {
+        return secureFactory().newDocumentBuilder().parse(new ByteArrayInputStream(xml));
     }
 
     private DocumentBuilderFactory secureFactory() throws Exception {
