@@ -35,8 +35,8 @@ public class TemplateDefinitionMapper {
                 List<Map<String, Object>> fields = new java.util.ArrayList<>();
                 List<String> requiredFields = new java.util.ArrayList<>();
                 Map<String, Object> values = new LinkedHashMap<>();
-                Element sampleSection = findSampleSection(sample, key);
-                Element sampleSource = sampleSection == null ? sample : sampleSection;
+                Element sampleSectionElement = findSampleSection(sample, key);
+                Element sampleSource = sampleSectionElement == null ? sample : sampleSectionElement;
                 boolean repeatable = Boolean.parseBoolean(section.getAttribute("repeatable"));
                 NodeList fieldNodes = section.getElementsByTagName("field");
 
@@ -75,10 +75,10 @@ public class TemplateDefinitionMapper {
                 mappedSection.put("requiredFields", requiredFields);
                 sections.add(mappedSection);
 
-                Map<String, Object> sampleSection = new LinkedHashMap<>();
-                sampleSection.put("key", key);
-                sampleSection.put("enabled", true);
-                sampleSection.put("values", values);
+                Map<String, Object> sampleSectionData = new LinkedHashMap<>();
+                sampleSectionData.put("key", key);
+                sampleSectionData.put("enabled", true);
+                sampleSectionData.put("values", values);
                 if (repeatable) {
                     List<Map<String, Object>> items = new java.util.ArrayList<>();
                     NodeList itemNodes = sampleSource.getElementsByTagName("item");
@@ -95,9 +95,9 @@ public class TemplateDefinitionMapper {
                         if (!itemValues.isEmpty()) items.add(itemValues);
                     }
                     if (items.isEmpty() && !values.isEmpty()) items.add(values);
-                    sampleSection.put("items", items);
+                    sampleSectionData.put("items", items);
                 }
-                sampleSections.add(sampleSection);
+                sampleSections.add(sampleSectionData);
             }
 
             Map<String, Object> definition = new LinkedHashMap<>();
