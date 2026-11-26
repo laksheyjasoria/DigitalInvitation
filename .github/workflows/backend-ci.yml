@@ -55,6 +55,8 @@ jobs:
       - name: Verify backend and PostgreSQL migrations
         working-directory: backend
         run: mvn --batch-mode verify
+      - name: Validate Nginx frontend configuration
+        run: docker run --rm -v "$PWD/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro" nginx:alpine nginx -t
       - name: Validate Docker Compose configuration
         run: |
           cp .env.example .env
