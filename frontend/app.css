@@ -63,3 +63,16 @@
 .di-invitation [data-reveal]{animation:di-rise .8s both}.di-invitation .di-section:nth-child(2){animation-delay:.12s}.di-invitation .di-section:nth-child(3){animation-delay:.24s}.di-invitation .di-section:nth-child(4){animation-delay:.36s}@keyframes di-rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}@keyframes di-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}@keyframes di-sway{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}@keyframes di-glow{0%,100%{opacity:.65}50%{opacity:1;text-shadow:0 0 18px var(--di-accent)}}
 .template-card-stage{height:310px;overflow:hidden;background:var(--di-bg);position:relative;padding:8px}.template-card-render{width:100%;height:100%;overflow:hidden;pointer-events:none}.template-card-render .di-invitation{min-height:540px;transform:scale(.52);transform-origin:top left;width:192%;box-shadow:none}.template-card-render .di-invitation .di-content{min-height:500px}.template-card-render .di-invitation .di-hero{padding-top:55px;padding-bottom:20px}.template-choice-copy{padding:16px}.template-card-actions{display:flex;gap:8px;margin-top:14px}.template-card-actions button{flex:1;padding:10px 8px}.template-preview-dialog{width:min(920px,94vw);max-height:92vh;overflow:auto;border:1px solid var(--line);padding:18px;background:var(--white);color:var(--ink)}.template-preview-dialog::backdrop{background:#17150fcc}.template-preview-head,.template-preview-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0 16px}.template-preview-head h2{font:500 24px var(--serif)}.template-preview-dialog #template-preview-full .di-invitation{min-height:600px}.template-preview-footer{justify-content:flex-end;padding-top:18px}#preview-box{padding:0;border:0;background:transparent;overflow:visible}#preview-box .di-invitation{border:0}
 @media(max-width:700px){.di-style-minimal .di-content,.di-style-romantic .di-content,.di-style-bold .di-content{display:block}.di-style-minimal .di-hero{text-align:center}.di-style-minimal .di-divider{justify-content:center;margin-left:auto}.di-style-minimal .di-intro{margin-left:auto}.di-style-romantic .di-details,.di-style-bold .di-details{padding:14px}.template-card-stage{height:280px}.template-preview-dialog{padding:10px}}@media(prefers-reduced-motion:reduce){.di-invitation *{animation:none!important;transition:none!important}}
+
+/* Template-defined field controls */
+.template-field{display:block;min-width:0;padding:9px 10px;border:1px solid var(--line);background:#fffefa;margin:8px 0 12px;color:var(--ink)}
+.template-field>span{display:block;font-size:12px;font-weight:650;margin:0 0 6px}
+.template-field input,.template-field textarea{margin-top:0}
+.template-field small{font-size:10px;color:var(--muted);font-weight:400}
+.required-mark{font:600 9px var(--sans);letter-spacing:.04em;color:#9a563c;text-transform:uppercase}
+.field-hide{font-size:10px;padding:5px 0}
+.optional-fields{margin:12px 0;color:var(--muted);font-size:11px}
+.optional-fields summary{cursor:pointer;font-weight:600}
+.optional-fields>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.optional-fields button{font-size:10px;padding:7px 10px}
+.section-card [data-section]:disabled{opacity:.6;cursor:not-allowed}
