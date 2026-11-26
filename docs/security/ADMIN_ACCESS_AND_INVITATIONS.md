@@ -10,7 +10,7 @@
 ## Invite-only administrator onboarding
 
 1. A Super Admin opens Administration and creates an invitation for an email address with role ADMIN or SUPPORT.
-2. The platform stores only a SHA-256 hash of a cryptographically random, single-use token. The invitation expires after 24 hours.
+2. The admin-invite table stores a SHA-256 hash of a cryptographically random, single-use token. The invitation expires after 24 hours. When email delivery is enabled, the outbox temporarily holds the raw token for delivery and clears the payload after success or terminal failure.
 3. If mail is enabled, an ADMIN_INVITE message is queued through the email outbox. The dashboard also displays the one-time link so it can be shared manually.
 4. The invitee opens the link, chooses their own display name and password, and accepts the invitation.
 5. The backend locks and validates the invitation, creates an ACTIVE account with the invited role, and consumes the token in the same database transaction.
