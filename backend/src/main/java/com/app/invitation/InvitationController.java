@@ -166,51 +166,129 @@ public class InvitationController {
         try{
             String definition=jdbc.queryForObject("SELECT definition::text FROM invitation_template_version WHERE id=?",String.class,templateVersionId);
             com.fasterxml.jackson.databind.JsonNode template=mapper.readTree(definition);
-            com.fasterxml.jackson.databind.JsonNode content;
-            if(rawContent instanceof String value)content=mapper.readTree(value);else content=mapper.valueToTree(rawContent==null?Map.of():rawContent);
+            com.fasterxml.jackson.databind.JsonNode content=rawContent instanceof String value?mapper.readTree(value):mapper.valueToTree(rawContent==null?Map.of():rawContent);
+            if(!content.isObject())throw new IllegalArgumentException("Invitation content must be an object");
             com.fasterxml.jackson.databind.JsonNode savedSections=content.path("sections");
+            if(!savedSections.isArray())throw new IllegalArgumentException("Invitation sections must be an array");
+
+            java.util.Map<String,com.fasterxml.jackson.databind.JsonNode> savedByKey=new java.util.LinkedHashMap<>();
+            for(com.fasterxml.jackson.databind.JsonNode saved:savedSections){
+                if(!saved.isObject())throw new IllegalArgumentException("Invalid invitation section");
+                String key=saved.path("key").asText("");
+                if(key.isBlank()||savedByKey.putIfAbsent(key,saved)!=null)
+                    throw new IllegalArgumentException("Invitation contains a missing or duplicate section");
+            }
+
+            java.util.Set<String> knownSections=new java.util.HashSet<>();
             for(com.fasterxml.jackson.databind.JsonNode section:template.path("sections")){
                 String key=section.path("key").asText("");
                 if(key.isBlank())continue;
-                com.fasterxml.jackson.databind.JsonNode saved=null;
-                if(savedSections.isArray())for(com.fasterxml.jackson.databind.JsonNode candidate:savedSections){
-                    if(key.equals(candidate.path("key").asText())){saved=candidate;break;}
-                }
+                knownSections.add(key);
+                com.fasterxml.jackson.databind.JsonNode saved=savedByKey.get(key);
                 boolean requiredSection=section.path("required").asBoolean(false);
-                boolean enabled=saved==null?section.path("enabled").asBoolean(true):saved.path("enabled").asBoolean(true);
+                boolean enabled=saved==null?section.path("enabled").asBoolean(true):saved.path("enabled").asBoolean(section.path("enabled").asBoolean(true));
                 if(requiredSection&&!enabled)throw new IllegalArgumentException("This template requires the section: "+section.path("label").asText(key));
                 if(!enabled)continue;
-                com.fasterxml.jackson.databind.JsonNode requiredFields=section.path("requiredFields");
-                if(requiredFields.isArray()){
-                    for(com.fasterxml.jackson.databind.JsonNode field:requiredFields){
-                        String fieldKey=field.asText("");
-                        if(fieldKey.isBlank())continue;
-                        boolean populated=saved!=null&&hasText(saved.path("values").path(fieldKey));
-                        com.fasterxml.jackson.databind.JsonNode items=saved==null?null:saved.path("items");
-                        if(!populated&&items!=null&&items.isArray()&&!items.isEmpty()){
-                            boolean anyPopulatedRow=false;
-                            populated=true;
-                            for(com.fasterxml.jackson.databind.JsonNode item:items){
-                                boolean rowHasAny=false;
-                                var fields=item.fields();
-                                while(fields.hasNext()){var entry=fields.next();if(hasText(entry.getValue())){rowHasAny=true;break;}}
-                                if(rowHasAny){anyPopulatedRow=true;if(!hasText(item.path(fieldKey))){populated=false;break;}}
-                            }
-                            populated=populated&&anyPopulatedRow;
-                        }
-                        if(!populated)throw new IllegalArgumentException("Complete the required field '"+fieldKey+"' in "+section.path("label").asText(key));
-                    }
-                }else if(requiredSection){
-                    boolean populated=saved!=null&&saved.path("values").isObject()&&saved.path("values").fields().hasNext();
-                    if(!populated)throw new IllegalArgumentException("Complete the required section: "+section.path("label").asText(key));
+
+                java.util.Set<String> requiredFields=new java.util.LinkedHashSet<>();
+                for(com.fasterxml.jackson.databind.JsonNode required:section.path("requiredFields")){
+                    if(required.isTextual()&&!required.asText().isBlank())requiredFields.add(required.asText());
                 }
+                java.util.Map<String,Boolean> allowedFields=new java.util.LinkedHashMap<>();
+                for(com.fasterxml.jackson.databind.JsonNode field:section.path("fields")){
+                    String fieldKey=field.isTextual()?field.asText():field.path("key").asText("");
+                    if(fieldKey.isBlank())continue;
+                    boolean required=requiredFields.contains(fieldKey)||(field.isObject()&&field.path("required").asBoolean(false));
+                    boolean optional=field.isObject()&&field.has("optional")?field.path("optional").asBoolean(false):!required;
+                    if(required&&optional)throw new IllegalArgumentException("Template field '"+fieldKey+"' cannot be both required and optional");
+                    allowedFields.put(fieldKey,optional);
+                    if(required)requiredFields.add(fieldKey);
+                }
+
+                java.util.Set<String> hiddenFields=new java.util.HashSet<>();
+                com.fasterxml.jackson.databind.JsonNode hidden=saved==null?null:saved.path("hiddenFields");
+                if(hidden!=null&&!hidden.isMissingNode()&&!hidden.isNull()){
+                    if(!hidden.isArray())throw new IllegalArgumentException("Hidden fields must be an array");
+                    for(com.fasterxml.jackson.databind.JsonNode hiddenField:hidden){
+                        String fieldKey=hiddenField.asText("");
+                        if(!allowedFields.containsKey(fieldKey))throw new IllegalArgumentException("Unknown field '"+fieldKey+"' in "+section.path("label").asText(key));
+                        if(!Boolean.TRUE.equals(allowedFields.get(fieldKey))||requiredFields.contains(fieldKey))
+                            throw new IllegalArgumentException("This template does not allow hiding field '"+fieldKey+"'");
+                        hiddenFields.add(fieldKey);
+                    }
+                }
+
+                boolean repeatable=section.path("repeatable").asBoolean(false);
+                com.fasterxml.jackson.databind.JsonNode values=saved==null?null:saved.path("values");
+                com.fasterxml.jackson.databind.JsonNode items=saved==null?null:saved.path("items");
+                if(repeatable){
+                    if(items!=null&&!items.isMissingNode()&&!items.isNull()&&!items.isArray())
+                        throw new IllegalArgumentException("Repeatable section entries must be an array");
+                    int itemCount=items==null||!items.isArray()?0:items.size();
+                    if(itemCount>50)throw new IllegalArgumentException("A repeatable section can contain at most 50 entries");
+                    boolean hasPopulatedItem=false;
+                    for(com.fasterxml.jackson.databind.JsonNode item:items==null||!items.isArray()?mapper.createArrayNode():items){
+                        if(!item.isObject())throw new IllegalArgumentException("Each repeatable section entry must be an object");
+                        validateAllowedFieldKeys(item,allowedFields,key);
+                        boolean populated=item.fields().hasNext();
+                        if(!populated)continue;
+                        hasPopulatedItem=true;
+                        for(String fieldKey:requiredFields){
+                            if(!hiddenFields.contains(fieldKey)&&!hasText(item.path(fieldKey)))
+                                throw new IllegalArgumentException("Complete required field '"+fieldKey+"' in every "+section.path("label").asText(key)+" entry");
+                        }
+                    }
+                    if(requiredSection&&!hasPopulatedItem)
+                        throw new IllegalArgumentException("Add at least one entry to "+section.path("label").asText(key));
+                    if(values!=null&&values.isObject()&&values.fields().hasNext())
+                        throw new IllegalArgumentException("Repeatable section values must be stored in entries, not section values");
+                }else{
+                    if(items!=null&&items.isArray()&&!items.isEmpty())
+                        throw new IllegalArgumentException("This template section does not allow repeatable entries");
+                    if(values!=null&&!values.isMissingNode()&&!values.isNull()){
+                        if(!values.isObject())throw new IllegalArgumentException("Section values must be an object");
+                        validateAllowedFieldKeys(values,allowedFields,key);
+                    }
+                    for(String fieldKey:requiredFields){
+                        if(!hiddenFields.contains(fieldKey)&&(values==null||!hasText(values.path(fieldKey))))
+                            throw new IllegalArgumentException("Complete required field '"+fieldKey+"' in "+section.path("label").asText(key));
+                    }
+                    if(requiredSection&&requiredFields.isEmpty()&&(values==null||!values.fields().hasNext()))
+                        throw new IllegalArgumentException("Complete the required section: "+section.path("label").asText(key));
+                }
+            }
+            for(String savedKey:savedByKey.keySet()){
+                if(!knownSections.contains(savedKey))
+                    throw new IllegalArgumentException("This template does not allow custom sections: "+savedKey);
+            }
+            com.fasterxml.jackson.databind.JsonNode locales=template.path("locales");
+            String locale=content.path("locale").asText("");
+            if(!locale.isBlank()&&locales.isArray()&&locales.size()>0){
+                boolean supported=false;for(com.fasterxml.jackson.databind.JsonNode supportedLocale:locales)if(locale.equals(supportedLocale.asText()))supported=true;
+                if(!supported)throw new IllegalArgumentException("This template does not support the selected language");
             }
         }catch(IllegalArgumentException e){throw e;}
         catch(Exception e){throw new IllegalArgumentException("Unable to validate invitation fields against the selected template");}
     }
+
+    private void validateAllowedFieldKeys(com.fasterxml.jackson.databind.JsonNode values,java.util.Map<String,Boolean> allowedFields,String sectionKey){
+        var fields=values.fieldNames();
+        while(fields.hasNext()){
+            String fieldKey=fields.next();
+            if(!allowedFields.containsKey(fieldKey))
+                throw new IllegalArgumentException("This template does not allow custom field '"+fieldKey+"' in section '"+sectionKey+"'");
+            com.fasterxml.jackson.databind.JsonNode value=values.path(fieldKey);
+            if(!value.isValueNode()&&!value.isNull())
+                throw new IllegalArgumentException("Template field values must be simple text or numbers");
+            if(value.isTextual()&&value.asText().length()>10000)
+                throw new IllegalArgumentException("Template field '"+fieldKey+"' is too long");
+        }
+    }
+
     private boolean hasText(com.fasterxml.jackson.databind.JsonNode value){
         return value!=null&&!value.isMissingNode()&&!value.isNull()&&!value.asText("").isBlank();
     }
+
     private void validateTimezone(String timezone){
         if(timezone==null||timezone.isBlank()||!settings.getStringList("invitation.supported-timezones").contains(timezone))
             throw new IllegalArgumentException("Select a supported invitation timezone");
