@@ -60,7 +60,7 @@ public class MediaController {
  }
  @PatchMapping("/{mediaId}/visibility")
  public ApiResponse<?> visibility(@PathVariable UUID invitationId,@PathVariable UUID mediaId,@RequestBody Map<String,String> body,Authentication auth){
-  String visibility=body.get("visibility");if(!java.util.Set.of("PRIVATE","PUBLIC").contains(visibility))throw new IllegalArgumentException("Visibility must be PRIVATE or PUBLIC");
+  String visibility=body.get("visibility");if(visibility==null||!java.util.Set.of("PRIVATE","PUBLIC").contains(visibility))throw new IllegalArgumentException("Visibility must be PRIVATE or PUBLIC");
   int n=jdbc.update("UPDATE customer_media SET visibility=? WHERE id=? AND invitation_id=? AND owner_user_id=?",visibility,mediaId,invitationId,UUID.fromString(auth.getName()));
   if(n==0)throw new IllegalArgumentException("Media not found");return ApiResponse.success(Map.of("id",mediaId,"visibility",visibility));
  }
