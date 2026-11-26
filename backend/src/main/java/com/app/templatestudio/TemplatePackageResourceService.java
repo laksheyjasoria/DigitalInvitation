@@ -27,4 +27,9 @@ public class TemplatePackageResourceService {
             throw new IllegalStateException("The published template package is missing from this application release", ex);
         }
     }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> previewFiles(String resourcePath) {
+        return (Map<String, Object>) preview(resourcePath).get("previewFiles");
+    }
 }
