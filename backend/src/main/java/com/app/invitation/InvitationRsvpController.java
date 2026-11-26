@@ -41,4 +41,29 @@ public class InvitationRsvpController {
   jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=?",UUID.class,id,UUID.fromString(auth.getName()));
   return ApiResponse.success(jdbc.queryForList("SELECT id,guest_name,guest_email,attendance,guest_count,message,created_at FROM invitation_rsvp WHERE invitation_id=? ORDER BY created_at DESC",id));
  }
+
+ @GetMapping(value="/api/v1/invitations/{id}/rsvps/export",produces="text/csv")
+ public org.springframework.http.ResponseEntity<byte[]> export(@PathVariable UUID id,Authentication auth){
+  jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=?",UUID.class,id,UUID.fromString(auth.getName()));
+  var rows=jdbc.queryForList("SELECT guest_name,guest_email,attendance,guest_count,message,created_at FROM invitation_rsvp WHERE invitation_id=? ORDER BY created_at DESC",id);
+  StringBuilder csv=new StringBuilder("Guest name,Guest email,Attendance,Guest count,Message,Submitted at\\r\\n");
+  for(var row:rows){
+   csv.append(csv(row.get("guest_name"))).append(',')
+      .append(csv(row.get("guest_email"))).append(',')
+      .append(csv(row.get("attendance"))).append(',')
+      .append(csv(row.get("guest_count"))).append(',')
+      .append(csv(row.get("message"))).append(',')
+      .append(csv(row.get("created_at"))).append("\\r\\n");
+  }
+  return org.springframework.http.ResponseEntity.ok()
+    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,"attachment; filename=invitation-rsvps.csv")
+    .header(org.springframework.http.HttpHeaders.CACHE_CONTROL,"private, no-store")
+    .contentType(org.springframework.http.MediaType.parseMediaType("text/csv; charset=UTF-8"))
+    .body(csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+ }
+
+ private static String csv(Object value){
+  String text=value==null?"":String.valueOf(value);
+  return "\\""+text.replace("\\"","\\"\\"")+"\\"";
+ }
 }
