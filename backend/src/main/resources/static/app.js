@@ -176,10 +176,10 @@ async function openInvitation(id){try{const i=await api("/invitations/"+id);acti
  }
  if(state==="PENDING_PAYMENT"&&i.order_status==="FAILED")$("payment-message").textContent="The previous payment attempt failed. Update your draft and try again.";
 } catch(e){alert(e.message);}}
-$("preview").addEventListener("click",()=>{try{const content=readContent();window.InvitationRenderer.render($("preview-box"),{title:$("invite-title").value.trim()||"Your invitation",content,design:templateDefinition?.design||{},layout:templateDefinition?.layout});$("preview-box").className="preview invitation-preview";$("preview-box").classList.remove("hidden");previewReviewed=true;$("create-order").disabled=false;$("payment-message").textContent="Preview reviewed. You can continue when you are satisfied.";}catch(e){$("payment-message").textContent=e.message;}});
+$("preview").addEventListener("click",()=>{try{const content=readContent();if(templateDefinition?.packageFormat==="XML_PACKAGE")setPackagePreview($("preview-box"),templateDefinition,content);else window.InvitationRenderer.render($("preview-box"),{title:$("invite-title").value.trim()||"Your invitation",content,design:templateDefinition?.design||{},layout:templateDefinition?.layout});$("preview-box").className="preview invitation-preview";$("preview-box").classList.remove("hidden");previewReviewed=true;$("create-order").disabled=false;$("payment-message").textContent="Preview reviewed. You can continue when you are satisfied.";}catch(e){$("payment-message").textContent=e.message;}});
 $("preview-toggle").addEventListener("click",()=>$("preview").click());
 
-function invalidateInvitationPreview(){if(previewReviewed){previewReviewed=false;$("create-order").disabled=true;$("payment-message").textContent="Your invitation changed. Preview it again before continuing.";}}
+function invalidateInvitationPreview(){if(previewReviewed){previewReviewed=false;$("create-order").disabled=true;$("payment-message").textContent="Your invitation changed. Preview it again before continuing.";}if(templateDefinition?.packageFormat==="XML_PACKAGE"&&!$("preview-box").classList.contains("hidden")){try{setPackagePreview($("preview-box"),templateDefinition,readContent());}catch(e){$("payment-message").textContent=e.message;}}}
 $("section-editor").addEventListener("input",invalidateInvitationPreview);
 $("section-editor").addEventListener("change",invalidateInvitationPreview);
 $("section-editor").addEventListener("click",invalidateInvitationPreview);
