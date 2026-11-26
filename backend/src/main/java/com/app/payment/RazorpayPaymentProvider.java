@@ -18,6 +18,8 @@ public class RazorpayPaymentProvider implements PaymentProvider {
     public RazorpayPaymentProvider(@Value("${app.payment.razorpay.key-id}")String keyId,
       @Value("${app.payment.razorpay.key-secret}")String keySecret,
       @Value("${app.payment.razorpay.webhook-secret}")String webhookSecret){
+        if(keyId==null||keyId.isBlank()||keySecret==null||keySecret.isBlank()||webhookSecret==null||webhookSecret.isBlank())
+            throw new IllegalStateException("Razorpay is enabled but one or more required credentials are missing");
         this.keyId=keyId;this.keySecret=keySecret;this.webhookSecret=webhookSecret;
         this.client=RestClient.builder().baseUrl("https://api.razorpay.com/v1").defaultHeaders(h->h.setBasicAuth(keyId,keySecret)).build();
     }
