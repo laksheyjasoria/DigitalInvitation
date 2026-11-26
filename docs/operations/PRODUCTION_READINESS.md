@@ -33,7 +33,7 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Create/configure the dedicated Master Drive root (default name: `DigitalInvitation`) and set its ID or exact name in protected environment variables.
 - [ ] Verify actual Master Drive upload, status polling, download, byte-range streaming, soft-delete, auth, concurrency and failure recovery against the deployed instance.
 - [ ] Test FileServer high concurrency, Telegram rate limits, storage retries, orphan cleanup and recovery after FileServer downtime.
-- [ ] Configure SMTP and test deliverability, bounce handling, retries and outbox alerting.
+- [ ] Configure SMTP and test deliverability, bounce handling, automated retry behavior and outbox alerting. Admin can inspect metadata and manually retry FAILED items.
 - [ ] Payment provider setup is intentionally deferred. Keep Razorpay disabled until credentials, webhook URL/signature verification and sandbox capture/failure/replay/refund tests are completed.
 - [ ] Configure provider secrets using a secret manager.
 
