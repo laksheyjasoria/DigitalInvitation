@@ -21,7 +21,7 @@ For local development, set these variables in the backend process environment or
 - `APP_GITHUB_TOKEN=<fine-grained-token>`
 - `APP_GITHUB_REPOSITORY=laksheyjasoria/DigitalInvitation`
 - `APP_GITHUB_TEMPLATE_RELEASE_BRANCH=template-releases`
-- `APP_GITHUB_TEMPLATE_BASE_BRANCH=main`
+- `APP_GITHUB_TEMPLATE_BASE_BRANCH=feature/platform-implementation`
 
 The fine-grained token needs repository Contents read/write permission. The first publish creates the release branch
 from the configured base branch if it does not already exist. Before each later package commit, the backend merges the latest
