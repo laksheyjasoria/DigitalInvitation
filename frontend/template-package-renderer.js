@@ -49,7 +49,7 @@
       doc.body.append(script);
     }
     const resize = doc.createElement("script");
-    resize.textContent = "(()=>{const send=()=>parent.postMessage({type:'di-template-resize',height:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)},'*');new ResizeObserver(send).observe(document.documentElement);window.addEventListener('load',send);send();})();";
+    resize.textContent = "(()=>{const send=()=>parent.postMessage({type:'di-template-resize',height:Math.max(document.documentElement.scrollHeight,document.body.scrollHeight)},'*');new ResizeObserver(send).observe(document.documentElement);window.addEventListener('load',()=>{send();parent.postMessage({type:'di-preview-rendered'},'*');},{once:true});send();})();";
     doc.body.append(resize);
     return "<!doctype html>" + doc.documentElement.outerHTML;
   }
