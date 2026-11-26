@@ -98,4 +98,6 @@ jobs:
       - name: Deploy verified image with blue-green switch
         env:
           IMAGE_TAG: ${{ github.sha }}
+          DI_ENV_FILE: ${{ vars.DI_ENV_FILE_PATH }}
+          DI_COMPOSE_PROJECT: ${{ vars.DI_COMPOSE_PROJECT }}
         run: bash scripts/deploy-blue-green.sh "$IMAGE_TAG"
