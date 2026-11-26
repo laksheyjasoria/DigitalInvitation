@@ -28,6 +28,15 @@ public class TemplatePackageResourceService {
         }
     }
 
+    public boolean isAvailable(String resourcePath) {
+        if (resourcePath == null) return false;
+        try {
+            return resources.getResource("classpath:" + resourcePath).exists();
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public Map<String, Object> previewFiles(String resourcePath) {
         return (Map<String, Object>) preview(resourcePath).get("previewFiles");
