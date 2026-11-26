@@ -23,6 +23,8 @@ class TemplateDefinitionMapperTest {
         Map<?, ?> sample = (Map<?, ?>) ((java.util.List<?>) ((Map<?, ?>) result.get("sampleContent")).get("sections")).get(0);
         assertEquals("Join us", ((Map<?, ?>) sample.get("values")).get("headline"));
         Map<?, ?> details = (Map<?, ?>) sections.get(1);
+        var detailFields = (java.util.List<?>) details.get("fields");
+        assertTrue((Boolean) ((Map<?, ?>) detailFields.get(0)).get("optional"), "Fields are optional unless XML marks them required");
         assertEquals("2027-01-01", ((Map<?, ?>) ((Map<?, ?>) ((java.util.List<?>) ((Map<?, ?>) result.get("sampleContent")).get("sections")).get(1)).get("values")).get("date"));
         Map<?, ?> eventsSample = (Map<?, ?>) ((java.util.List<?>) ((Map<?, ?>) result.get("sampleContent")).get("sections")).get(2);
         var eventItems = (java.util.List<?>) eventsSample.get("items");
