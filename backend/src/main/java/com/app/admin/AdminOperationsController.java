@@ -28,7 +28,7 @@ public class AdminOperationsController {
  }
  @PatchMapping("/users/{id}/role") @org.springframework.transaction.annotation.Transactional
  public ApiResponse<?> userRole(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
-  requireSuperAdmin(auth);String role=body.get("role");if(role==null||!Set.of("CUSTOMER","ADMIN","SUPER_ADMIN").contains(role))throw new IllegalArgumentException("Invalid role");
+  requireSuperAdmin(auth);String role=body.get("role");if(role==null||!Set.of("CUSTOMER","ADMIN","SUPER_ADMIN","SUPPORT").contains(role))throw new IllegalArgumentException("Invalid role");
   int n=jdbc.update("UPDATE app_user SET role=?,auth_version=auth_version+1,updated_at=now() WHERE id=?",role,id);if(n==0)throw new IllegalArgumentException("User not found");
   audit.record(UUID.fromString(auth.getName()),"USER_ROLE_CHANGED","USER",id.toString(),"SUCCESS",Map.of("role",role));
   return ApiResponse.success(Map.of("userId",id,"role",role));
