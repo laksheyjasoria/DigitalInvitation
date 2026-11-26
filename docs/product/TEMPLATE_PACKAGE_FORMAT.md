@@ -83,6 +83,7 @@ Use HTML data attributes to connect the XML field keys to customer-entered value
 - Add `data-field="headline"` to the element that should display the XML field with key `headline`.
 - If a field key is used in more than one section, add `data-section="hero"` to scope it to that section.
 - Put an optional section wrapper on an element with `data-section-key="family"`; the wrapper is removed when the customer disables that optional section.
+- Optional fields with no customer value, or fields the customer hides, are removed from the rendered page rather than displaying the template's sample placeholder.
 - For a repeatable section, add `data-repeat="events"` to its list container and place a direct-child `<template>` inside it. Use `data-field` on elements inside the template. The renderer clones the template once for each populated entry and hides the container when no entries have values.
 
 Example:
