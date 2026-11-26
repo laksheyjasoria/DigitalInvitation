@@ -4,6 +4,7 @@ window.addEventListener("message",function(event){
  const snapshot=event.data.snapshot||{};
  if(!window.InvitationRenderer)return;
  window.InvitationRenderer.render(document.getElementById("preview-root"),snapshot);
+ window.parent.postMessage({type:"di-preview-rendered"},"*");
 });
 window.parent.postMessage({type:"di-preview-ready"},"*");
 })();
