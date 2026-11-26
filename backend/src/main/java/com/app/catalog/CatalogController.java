@@ -32,7 +32,7 @@ public class CatalogController {
             (rs,n)->{java.util.Map<String,Object> row=new java.util.LinkedHashMap<>();row.put("id",rs.getObject("id"));row.put("display_name",rs.getString("display_name"));row.put("description",rs.getString("description"));row.put("template_version_id",rs.getObject("template_version_id"));row.put("version_number",rs.getInt("version_number"));row.put("definition",rs.getString("definition"));row.put("package_resource_path",rs.getString("package_resource_path"));return row;},templateId);
         if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"Template not found");
         var row=rows.get(0);String path=(String)row.remove("package_resource_path");
-        if(path!=null)row.put("packagePreview",packages.previewFiles(path));
+        if(path!=null){row.put("packagePreview",packages.previewFiles(path));row.put("packageSampleContent",packages.sampleContent(path));}
         return ApiResponse.success(row);
     }
 }
