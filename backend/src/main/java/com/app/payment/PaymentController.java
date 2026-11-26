@@ -22,7 +22,8 @@ public class PaymentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
-        if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");\n        if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment is required but no payment provider is configured. Configure and verify the provider before enabling paid publication.");
+        if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
+        if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment is required but no payment provider is configured. Configure and verify the provider before enabling paid publication.");
         var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status='DRAFT' FOR UPDATE",id,user);
         long baseAmount=settings.getLong("pricing.base-price-minor");
         BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
@@ -67,6 +68,7 @@ public class PaymentController {
     public ApiResponse<?> createExtensionOrder(@PathVariable UUID id,Authentication auth){
         if(!settings.getBoolean("invitation.expiry.extension-enabled"))
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Invitation extensions are not available");
+        if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Invitation extensions require a configured payment provider.");
         UUID user=UUID.fromString(auth.getName());
         var invitation=jdbc.query("SELECT i.status,p.id publication_id,p.revoked_at FROM invitation i JOIN LATERAL (SELECT id,revoked_at FROM invitation_publication WHERE invitation_id=i.id ORDER BY published_at DESC LIMIT 1) p ON true WHERE i.id=? AND i.owner_user_id=? FOR UPDATE OF i",
             (rs,n)->Map.of("status",rs.getString("status"),"publicationId",rs.getObject("publication_id",UUID.class),"revoked",rs.getTimestamp("revoked_at")!=null),id,user);
