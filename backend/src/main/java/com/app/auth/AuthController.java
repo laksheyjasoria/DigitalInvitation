@@ -24,10 +24,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
- private final JdbcTemplate jdbc;private final PasswordEncoder encoder;private final JwtService jwt;private final ObjectMapper mapper;
+ private final JdbcTemplate jdbc;private final PasswordEncoder encoder;private final JwtService jwt;private final ObjectMapper mapper;private final AuthRateLimitService rateLimit;
  private final SecureRandom random=new SecureRandom();private final String publicBaseUrl;
- public AuthController(JdbcTemplate jdbc,PasswordEncoder encoder,JwtService jwt,ObjectMapper mapper,@Value("${app.public-base-url}")String publicBaseUrl){
-  this.jdbc=jdbc;this.encoder=encoder;this.jwt=jwt;this.mapper=mapper;this.publicBaseUrl=publicBaseUrl;
+ public AuthController(JdbcTemplate jdbc,PasswordEncoder encoder,JwtService jwt,ObjectMapper mapper,AuthRateLimitService rateLimit,@Value("${app.public-base-url}")String publicBaseUrl){
+  this.jdbc=jdbc;this.encoder=encoder;this.jwt=jwt;this.mapper=mapper;this.rateLimit=rateLimit;this.publicBaseUrl=publicBaseUrl;
  }
  public record RegisterRequest(@Email @NotBlank String email,@NotBlank @Size(min=12,max=72) String password,@NotBlank @Size(max=120) String displayName){}
  public record LoginRequest(@Email @NotBlank String email,@NotBlank String password){}
@@ -50,10 +50,19 @@ public class AuthController {
   return ApiResponse.success(Map.of("verified",true));
  }
  @PostMapping("/login")
- public ApiResponse<?> login(@Valid @RequestBody LoginRequest r){
-  var users=jdbc.query("SELECT id,email,password_hash,role,status FROM app_user WHERE email=?",(rs,n)->Map.of("id",rs.getObject("id").toString(),"email",rs.getString("email"),"hash",rs.getString("password_hash"),"role",rs.getString("role"),"status",rs.getString("status")),r.email().trim().toLowerCase());
-  if(users.isEmpty()||!encoder.matches(r.password(),(String)users.get(0).get("hash")))throw new IllegalArgumentException("Invalid email or password");
-  var u=users.get(0);if(!"ACTIVE".equals(u.get("status")))throw new IllegalArgumentException("Verify your email address before signing in");
+ public ApiResponse<?> login(@Valid @RequestBody LoginRequest r, jakarta.servlet.http.HttpServletRequest request){
+  String email=r.email().trim().toLowerCase(java.util.Locale.ROOT);
+  String remoteAddress=request.getRemoteAddr();
+  rateLimit.assertAllowed(email,remoteAddress);
+  var users=jdbc.query("SELECT id,email,password_hash,role,status FROM app_user WHERE email=?",
+   (rs,n)->Map.of("id",rs.getObject("id").toString(),"email",rs.getString("email"),"hash",rs.getString("password_hash"),"role",rs.getString("role"),"status",rs.getString("status")),email);
+  if(users.isEmpty()||!encoder.matches(r.password(),(String)users.get(0).get("hash"))
+      ||!"ACTIVE".equals(users.get(0).get("status"))){
+   rateLimit.recordFailure(email,remoteAddress);
+   throw new IllegalArgumentException("Invalid email or password, or account is not active");
+  }
+  rateLimit.clear(email,remoteAddress);
+  var u=users.get(0);
   String access=jwt.issue((String)u.get("id"),(String)u.get("email"),(String)u.get("role"));
   return ApiResponse.success(Map.of("accessToken",access,"tokenType","Bearer","user",Map.of("id",u.get("id"),"email",u.get("email"),"role",u.get("role"))));
  }
