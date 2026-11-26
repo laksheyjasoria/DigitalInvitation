@@ -130,7 +130,10 @@ public class TemplatePackageValidator {
         if (!(lower.endsWith(".html") || lower.endsWith(".css") || lower.endsWith(".js")
                 || lower.endsWith(".xml") || lower.endsWith(".svg") || lower.endsWith(".png")
                 || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp")
-                || lower.endsWith(".woff2") || lower.endsWith(".txt"))) {
+                || lower.endsWith(".woff2") || lower.endsWith(".ttf") || lower.endsWith(".otf")
+                || lower.endsWith(".gif") || lower.endsWith(".avif") || lower.endsWith(".mp4")
+                || lower.endsWith(".webm") || lower.endsWith(".mp3") || lower.endsWith(".ogg")
+                || lower.endsWith(".json") || lower.endsWith(".txt"))) {
             throw new IllegalArgumentException("Unsupported template asset type: " + name);
         }
     }
