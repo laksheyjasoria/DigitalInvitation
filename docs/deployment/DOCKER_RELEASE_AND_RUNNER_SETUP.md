@@ -36,8 +36,8 @@ The Compose deployment uses a stable blue backend as its initial active instance
 1. Pulls the immutable commit-SHA image.
 2. Starts the inactive backend container (blue or green) with the production Compose environment.
 3. Waits for its Docker health check.
-4. Validates the Nginx configuration and atomically switches the upstream.
-5. Reloads Nginx and keeps the previous backend running for rollback.
+4. Validates the Nginx configuration, atomically switches the upstream, reloads Nginx and smoke-tests the public health route.
+5. Keeps the previous backend running for immediate rollback.
 
 If candidate health, Nginx validation or reload fails, the script leaves or restores the previous upstream and removes
 the failed candidate. The previous backend is intentionally retained until the next deployment reuses that slot.
