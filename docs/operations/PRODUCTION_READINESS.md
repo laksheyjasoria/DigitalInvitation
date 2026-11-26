@@ -6,16 +6,19 @@ This implementation is an integration milestone. Do not accept live customers un
 - [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test and Docker Compose validation passed in GitHub Actions run #234 on the current stabilization changes.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
-- [x] Add persistent per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
+- [x] Add configurable per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
+- [x] Add PostgreSQL-backed test proving an access JWT is rejected immediately after the user's auth version changes.
 - [ ] Add integration tests for refresh-token expiry/replay, suspended accounts, password-reset invalidation and multi-tab rotation.
 - [x] Add public RSVP throttling per publication/client and scheduled cleanup of expired throttle buckets.
-- [ ] Add cross-user IDOR tests for every invitation, order, media and payment endpoint.
+- [x] Add PostgreSQL-backed cross-user invitation detail test and verify the publication row-lock query.
+- [ ] Extend cross-user IDOR tests to every order, media and payment endpoint.
 - [x] Add unit tests for valid/tampered Razorpay checkout signatures and exact raw-body webhook signatures.
 - [ ] Add payment tests for wrong amount/currency/order, duplicate webhook, replay, late webhook, concurrent checkout and refund.
 - [x] Serialize invitation checkout and payment settlement with database row locks; reject mismatched Razorpay captures, audit rejected webhook events, and enforce unique provider order IDs.
 - [x] Add expiry calculation tests for zero grace, seven calendar days, timezone conversion and a DST transition.
 - [ ] Add lifecycle tests for leap days, midnight boundaries, last-function date changes and purchase-time configuration snapshots.
 - [ ] Add tests for policy version changes and consent invalidation after content changes.
+- [x] Add owner-scoped media deletion and no-store cache headers for private/public media delivery.
 - [ ] Add upload malware/content scanning, decompression bomb limits, image dimension limits and storage cleanup tests.
 - [ ] Run SAST, dependency, container and secret scans; perform independent penetration testing.
 
