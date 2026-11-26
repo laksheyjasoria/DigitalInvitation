@@ -38,6 +38,20 @@ public class AdminOperationsController {
   int safe=Math.max(1,Math.min(limit,250));
   return ApiResponse.success(jdbc.queryForList("SELECT id,actor_user_id,action,resource_type,resource_id,outcome,metadata,created_at FROM audit_log ORDER BY created_at DESC LIMIT ?",safe));
  }
+ @GetMapping("/email-outbox")
+ public ApiResponse<?> emailOutbox(@RequestParam(defaultValue="100")int limit,@RequestParam(required=false)String status){
+  int safe=Math.max(1,Math.min(limit,250));
+  if(status!=null&&!Set.of("PENDING","SENT","FAILED").contains(status))throw new IllegalArgumentException("Invalid email outbox status");
+  if(status==null)return ApiResponse.success(jdbc.queryForList("SELECT id,recipient,template_key,status,attempts,next_attempt_at,created_at,sent_at FROM email_outbox ORDER BY created_at DESC LIMIT ?",safe));
+  return ApiResponse.success(jdbc.queryForList("SELECT id,recipient,template_key,status,attempts,next_attempt_at,created_at,sent_at FROM email_outbox WHERE status=? ORDER BY created_at DESC LIMIT ?",status,safe));
+ }
+ @PostMapping("/email-outbox/{id}/retry") @org.springframework.transaction.annotation.Transactional
+ public ApiResponse<?> retryEmail(@PathVariable UUID id,Authentication auth){
+  int changed=jdbc.update("UPDATE email_outbox SET status='PENDING',attempts=0,next_attempt_at=now() WHERE id=? AND status='FAILED'",id);
+  if(changed!=1)throw new IllegalArgumentException("Failed email item not found or is not eligible for retry");
+  audit.record(UUID.fromString(auth.getName()),"EMAIL_OUTBOX_RETRY","EMAIL_OUTBOX",id.toString(),"SUCCESS",Map.of());
+  return ApiResponse.success(Map.of("id",id,"status","PENDING"));
+ }
  @GetMapping("/orders")
  public ApiResponse<?> orders(@RequestParam(defaultValue="100")int limit){
   int safe=Math.max(1,Math.min(limit,250));
