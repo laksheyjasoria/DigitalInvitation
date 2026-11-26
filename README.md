@@ -8,7 +8,7 @@ The current implementation is on the draft pull request:
 
 https://github.com/laksheyjasoria/DigitalInvitation/pull/1
 
-This branch contains the Java/Spring Boot foundation, PostgreSQL migrations, authentication and account email workflows, catalogue/template APIs, owner-scoped invitation drafts, consent/policy versioning, a deferred Razorpay adapter, FileServer Master Drive storage adapter, image media APIs, publication snapshots, QR generation, expiry processing, customer editor, admin settings dashboard, Docker and CI configuration.
+This branch contains the Java/Spring Boot foundation, PostgreSQL migrations, authentication and account email workflows, catalogue/template APIs, owner-scoped invitation drafts, consent/policy versioning, a deferred Razorpay adapter, FileServer Master Drive storage adapter, image media APIs, publication snapshots, QR generation, expiry processing, customer builder with media gallery, locale selection and admin catalog management, Docker and CI configuration.
 
 **This is not yet a production-ready release.** The PR is still draft. GitHub Actions verifies Maven compilation/tests, frontend JavaScript syntax, PostgreSQL 16 Flyway migrations, Nginx configuration and Docker Compose. Recent hardening adds rotating HttpOnly refresh sessions, immediate JWT invalidation on account/role changes, login and RSVP throttling, owner-scoped media deletion, and customer RSVP CSV export. Full browser end-to-end, storage integration against the deployed FileServer, SMTP deliverability, security, load and backup-restore tests remain.
 
@@ -17,7 +17,7 @@ This branch contains the Java/Spring Boot foundation, PostgreSQL migrations, aut
 - Java 21, Spring Boot 3.5.x, Maven
 - PostgreSQL 16, Flyway
 - Spring Security, BCrypt, JWT
-- Razorpay provider adapter (disabled until later configuration and sandbox verification)
+- Razorpay provider adapter (disabled; payment requirement is false for the initial rollout)
 - FileServer Master Drive adapter using server-side `X-Master-Key` authentication
 - Responsive static frontend served by Nginx
 - Docker Compose and GitHub Actions
@@ -29,7 +29,7 @@ This branch contains the Java/Spring Boot foundation, PostgreSQL migrations, aut
 3. Set APP_PUBLIC_BASE_URL=http://localhost:8088.
 4. Set APP_BOOTSTRAP_ADMIN_EMAIL and APP_BOOTSTRAP_ADMIN_PASSWORD (at least 16 characters) if you need an initial SUPER_ADMIN. The bootstrap account is inserted only if that email does not already exist.
 5. Configure SMTP before expecting email verification and password-reset links to be delivered. Set APP_MAIL_ENABLED=true and SMTP values.
-6. To use Master Drive, deploy the FileServer `feature/master-drive-storage-api` API (or merge it into the deployed FileServer), create a root drive named `DigitalInvitation` or set its ID, then configure APP_FILESERVER_ENABLED, APP_FILESERVER_BASE_URL and APP_FILESERVER_MASTER_KEY. Keep the master key only in the backend environment.
+6. Payment is disabled for the initial rollout by migration V13. Do not turn on `invitation.publication.payment-required` until Razorpay credentials, webhook configuration and sandbox verification are complete.\n7. To use Master Drive, deploy the FileServer `feature/master-drive-storage-api` API (or merge it into the deployed FileServer), create a root drive named `DigitalInvitation` or set its ID, then configure APP_FILESERVER_ENABLED, APP_FILESERVER_BASE_URL and APP_FILESERVER_MASTER_KEY. Keep the master key only in the backend environment.
 7. Keep Razorpay disabled until provider credentials, webhook configuration and sandbox tests are complete.
 8. Run docker compose up --build -d.
 9. Open http://localhost:8088. Customer workspace: /app.html. Admin dashboard: /admin.html.
