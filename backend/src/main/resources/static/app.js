@@ -46,13 +46,13 @@ async function showTemplateGallery(categoryId){
  const rows=await api("/catalog/categories/"+encodeURIComponent($("gallery-category").value)+"/templates");
  if(!rows.length){$("template-grid").innerHTML="<p class=muted>No published designs for this occasion yet.</p>";return;}
  galleryChoices=[];
- for(const t of rows){const d=await api("/catalog/templates/"+t.id);const def=typeof d.definition==="string"?JSON.parse(d.definition):d.definition;galleryChoices.push({t,def,preview:d.packagePreview||null});}
+ for(const t of rows){const d=await api("/catalog/templates/"+t.id);const def=typeof d.definition==="string"?JSON.parse(d.definition):d.definition;galleryChoices.push({t,def,preview:d.packagePreview||null,sampleContent:d.packageSampleContent||sampleTemplateContent(def)});}
  $("template-grid").innerHTML=galleryChoices.map((x,i)=>'<article class="template-choice"><div class="template-card-stage"><iframe class="template-card-frame" data-template-preview-frame data-template-thumb="'+i+'" src="about:blank" sandbox="allow-scripts" title="Invitation sample preview"></iframe></div><div class="template-choice-copy"><h3>'+escapeHtml(x.t.display_name)+'</h3><p>'+escapeHtml(x.t.description||"A thoughtfully designed invitation")+'</p><small>'+(x.def?.sections?.length||0)+' editable sections · '+escapeHtml(x.def?.design?.style||"classic")+' layout</small><div class="template-card-actions"><button type="button" class="secondary" data-template-preview="'+i+'">Full preview</button><button type="button" class="primary" data-template-choice="'+i+'">Choose design</button></div></div></article>').join("");
- galleryChoices.forEach((x,i)=>renderPreviewFrame(document.querySelector('[data-template-thumb="'+i+'"]'),{title:x.t.display_name,content:sampleTemplateContent(x.def),design:x.def?.design||{},layout:x.def?.layout,templatePackagePreview:x.preview}));
+ galleryChoices.forEach((x,i)=>renderPreviewFrame(document.querySelector('[data-template-thumb="'+i+'"]'),{title:x.t.display_name,content:x.sampleContent,design:x.def?.design||{},layout:x.def?.layout,templatePackagePreview:x.preview}));
  document.querySelectorAll("[data-template-choice]").forEach(b=>b.addEventListener("click",()=>chooseTemplate(galleryChoices[Number(b.dataset.templateChoice)])));
  document.querySelectorAll("[data-template-preview]").forEach(b=>b.addEventListener("click",()=>{
   const choice=galleryChoices[Number(b.dataset.templatePreview)];$("template-preview-title").textContent=choice.t.display_name;
-  renderPreviewFrame($("template-preview-full"),{title:choice.t.display_name,content:sampleTemplateContent(choice.def),design:choice.def?.design||{},layout:choice.def?.layout,templatePackagePreview:choice.preview});
+  renderPreviewFrame($("template-preview-full"),{title:choice.t.display_name,content:choice.sampleContent,design:choice.def?.design||{},layout:choice.def?.layout,templatePackagePreview:choice.preview});
   $("template-preview-use").onclick=()=>chooseTemplate(choice);$("template-preview-dialog").showModal();
  }));
 }
