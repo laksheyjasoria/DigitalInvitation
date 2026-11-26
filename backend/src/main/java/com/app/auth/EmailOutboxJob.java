@@ -30,10 +30,10 @@ public class EmailOutboxJob {
     else if(template.equals("ADMIN_INVITE")){link=base+"/admin-invite.html?token="+token;subject="You are invited to DigitalInvitation administration";body="You have been invited to join DigitalInvitation as "+payload.get("role")+". Set your password and activate your account using this single-use link:\n\n"+link+"\n\nThis link expires in 24 hours. If you were not expecting this invitation, ignore this message.";}
     else{link=base+"/reset.html?token="+token;subject="Reset your DigitalInvitation password";body="Use this link to reset your password:\n\n"+link+"\n\nThis link expires in one hour. If you did not request a reset, ignore this message.";}
     SimpleMailMessage message=new SimpleMailMessage();message.setFrom(from);message.setTo((String)row.get("recipient"));message.setSubject(subject);message.setText(body);sender.send(message);
-    jdbc.update("UPDATE email_outbox SET status='SENT',sent_at=now(),attempts=attempts+1 WHERE id=?",row.get("id"));
+    jdbc.update("UPDATE email_outbox SET status='SENT',sent_at=now(),attempts=attempts+1,payload='{}'::jsonb WHERE id=?",row.get("id"));
    }catch(Exception ex){
     int attempts=((Number)row.get("attempts")).intValue()+1;
-    jdbc.update("UPDATE email_outbox SET attempts=attempts+1,status=?,next_attempt_at=now()+interval '5 minutes' WHERE id=?",attempts>=5?"FAILED":"PENDING",row.get("id"));
+    jdbc.update("UPDATE email_outbox SET attempts=attempts+1,status=?,payload=CASE WHEN ? THEN '{}'::jsonb ELSE payload END,next_attempt_at=now()+interval '5 minutes' WHERE id=?",attempts>=5?"FAILED":"PENDING",attempts>=5,row.get("id"));
    }
   }
  }
