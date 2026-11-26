@@ -10,6 +10,7 @@ This implementation is an integration milestone. Do not accept live customers un
 - [ ] Add cross-user IDOR tests for every invitation, order, media and payment endpoint.
 - [x] Add unit tests for valid/tampered Razorpay checkout signatures and exact raw-body webhook signatures.
 - [ ] Add payment tests for wrong amount/currency/order, duplicate webhook, replay, late webhook, concurrent checkout and refund.
+- [x] Serialize invitation checkout and payment settlement with database row locks; reject mismatched Razorpay captures, audit rejected webhook events, and enforce unique provider order IDs.
 - [x] Add expiry calculation tests for zero grace, seven calendar days, timezone conversion and a DST transition.
 - [ ] Add lifecycle tests for leap days, midnight boundaries, last-function date changes and purchase-time configuration snapshots.
 - [ ] Add tests for policy version changes and consent invalidation after content changes.
