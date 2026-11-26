@@ -10,7 +10,7 @@ https://github.com/laksheyjasoria/DigitalInvitation/pull/1
 
 This branch contains the Java/Spring Boot foundation, PostgreSQL migrations, authentication and account email workflows, catalogue/template APIs, owner-scoped invitation drafts, consent/policy versioning, Razorpay integration, storage provider boundary, image media APIs, publication snapshots, QR generation, expiry processing, customer editor, admin settings dashboard, Docker and CI configuration.
 
-**This is not yet a production-ready release.** The PR is still draft. The build and end-to-end flows must be verified. The deployed FileServer upload/delete contract is not confirmed, SMTP and payment credentials need configuration, and several product capabilities and security/operations gates remain. See docs/operations/PRODUCTION_READINESS.md.
+**This is not yet a production-ready release.** The PR is still draft. GitHub Actions now verifies Maven compilation/tests, frontend JavaScript syntax, PostgreSQL 16 Flyway migrations, Nginx configuration and Docker Compose. Recent hardening adds rotating HttpOnly refresh sessions, immediate JWT invalidation on account/role changes, login and RSVP throttling, owner-scoped media deletion, and customer RSVP CSV export. Full browser end-to-end, payment sandbox, SMTP deliverability, security, load and backup-restore tests remain. The deployed FileServer upload/delete contract is not confirmed, and live provider credentials still need configuration. See docs/operations/PRODUCTION_READINESS.md.
 
 ## Stack
 
