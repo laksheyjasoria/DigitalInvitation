@@ -23,7 +23,7 @@ class TemplatePackageValidatorTest {
 
     @Test
     void rejectsUnsafeTemplatePackageVersion() {
-        String unsafe = definition().replace("version=\\"1.0.0\\"", "version=\\"../latest\\"");
+        String unsafe = definition().replace("version=\"1.0.0\"", "version=\"../latest\"");
         assertThrows(IllegalArgumentException.class,
                 () -> validator.validate(packageZip(unsafe, preview(), false)));
     }
