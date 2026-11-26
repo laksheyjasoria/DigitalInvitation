@@ -69,7 +69,7 @@ public class PaymentSettlementService {
                 throw new IllegalStateException("Invitation is not awaiting payment settlement");
             }
         } else if ("EXTENSION".equals(orderType)) {
-            settleExtension(orderId, invitationId, (String) order.get("snapshot"));
+            settleExtension(orderId, invitationId, userId, (String) order.get("snapshot"));
         } else {
             throw new IllegalStateException("Unsupported order type");
         }
@@ -86,7 +86,7 @@ public class PaymentSettlementService {
                 Map.of("provider", provider, "paymentId", paymentId, "orderType", orderType));
     }
 
-    private void settleExtension(UUID orderId, UUID invitationId, String snapshotText) {
+    private void settleExtension(UUID orderId, UUID invitationId, UUID userId, String snapshotText) {
         try {
             JsonNode snapshot = mapper.readTree(snapshotText);
             int days = snapshot.path("extensionDays").asInt(0);
@@ -135,7 +135,7 @@ public class PaymentSettlementService {
                     "VALUES (?,?,?,?,?,?)",
                     invitationId, orderId, publicationId, days,
                     Timestamp.from(previousExpiry), Timestamp.from(newExpiry));
-            audit.record(null, "INVITATION_EXTENDED", "INVITATION", invitationId.toString(), "SUCCESS",
+            audit.record(userId, "INVITATION_EXTENDED", "INVITATION", invitationId.toString(), "SUCCESS",
                     Map.of("orderId", orderId.toString(), "publicationId", publicationId.toString(),
                             "extensionDays", days, "previousExpiry", previousExpiry.toString(),
                             "newExpiry", newExpiry.toString()));
