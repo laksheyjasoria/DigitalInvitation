@@ -28,7 +28,7 @@ class GitHubTemplateReleaseServiceTest {
             assertEquals("commit-sha", result.commitSha());
             assertEquals("template-releases", result.branch());
             assertEquals("backend/src/main/resources/templates/packages/TEMP0000001/1.0.0.zip", result.resourcePath());
-            assertTrue(github.requests.stream().anyMatch(r -> r.startsWith("POST /git/refs")));
+            assertTrue(github.requests.stream().anyMatch(r -> r.contains("POST /repos/test/repo/git/refs")));
             assertTrue(github.requests.stream().anyMatch(r -> r.contains(Base64.getEncoder().encodeToString(zip))));
             assertTrue(github.requests.stream().anyMatch(r -> r.contains("backend/src/main/resources/templates/packages/TEMP0000001/1.0.0.zip")));
         }
@@ -41,8 +41,8 @@ class GitHubTemplateReleaseServiceTest {
             var result = service.commitPackage("TEMP0000002", "2.0.0", "b".repeat(64), new byte[] {9});
 
             assertEquals("commit-sha", result.commitSha());
-            assertTrue(github.requests.stream().anyMatch(r -> r.startsWith("POST /merges")));
-            assertTrue(github.requests.stream().anyMatch(r -> r.startsWith("GET /git/commits/synced-sha")));
+            assertTrue(github.requests.stream().anyMatch(r -> r.contains("POST /repos/test/repo/merges")));
+            assertTrue(github.requests.stream().anyMatch(r -> r.contains("GET /repos/test/repo/git/commits/synced-sha")));
         }
     }
 
