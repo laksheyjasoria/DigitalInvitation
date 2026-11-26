@@ -1,31 +1,63 @@
-# Docker image release and same-host deployment
+# Template publishing, Docker releases and blue-green deployment
 
-## Current automated release boundary
+## Administrator template publishing
 
-The Docker image release GitHub Actions workflow verifies the backend and publishes an immutable
-backend image to GitHub Container Registry (GHCR). It runs for version tags (v*) or when manually
-dispatched with an image tag. The workflow does not deploy a production server.
+Template Studio stores uploads in the private staging table. Upload and preview do not publish anything.
+When an authorized administrator chooses a category and clicks **Publish**:
 
-Image name: ghcr.io/laksheyjasoria/digitalinvitation:<tag>
+1. The backend revalidates the ZIP and maps its XML definition into an immutable invitation template version.
+2. The backend commits the ZIP as `backend/src/main/resources/templates/packages/<template-id>/<package-version>.zip`
+   on the dedicated `template-releases` branch using the GitHub Git Data API.
+3. The catalogue version stores the classpath resource path and SHA-256. Existing invitations keep their original
+   template-version ID and are not changed by later template versions.
+4. A push to `template-releases` starts the Docker release workflow. It runs Maven verification and builds
+   `ghcr.io/laksheyjasoria/digitalinvitation` with an immutable commit-SHA tag and the moving
+   `template-latest` tag.
 
-## Required one-time server setup before deployment can be enabled
+The GitHub credential is used only by the backend and must never be sent to the browser or stored in the database.
+For local development, set these variables in the backend process environment or the protected `.env` file:
 
-1. Install and register a dedicated GitHub Actions self-hosted runner on the Docker host.
-2. Give the runner the labels self-hosted, linux, x64, and digitalinvitation.
-3. Run the runner under a dedicated non-root account. Grant only the minimum Docker access required.
-4. Restrict the runner group to this repository and protected deployment workflow.
-5. Configure the host's GHCR pull credentials and production .env outside the repository.
-6. Ensure PostgreSQL data and uploaded media are persistent volumes/services and are never inside the replaceable application image.
-7. Configure a reverse proxy capable of switching between two application instances before enabling rolling deployment.
-8. Protect main, require CI checks, and restrict release tags to authorized maintainers.
+- `APP_GITHUB_TEMPLATE_RELEASES_ENABLED=true`
+- `APP_GITHUB_TOKEN=<fine-grained-token>`
+- `APP_GITHUB_REPOSITORY=laksheyjasoria/DigitalInvitation`
+- `APP_GITHUB_TEMPLATE_RELEASE_BRANCH=template-releases`
+- `APP_GITHUB_TEMPLATE_BASE_BRANCH=main`
 
-Do not add a self-hosted runner token, PAT, SSH private key, database password, JWT secret, or FileServer
-Master Key to the repository. Never run arbitrary uploaded template JavaScript or ZIP contents on the
-host runner.
+The fine-grained token needs repository Contents read/write permission. The first publish creates the release branch
+from the configured base branch if it does not already exist. Do not use a personal token with broader access than
+required. Keep `.env` out of Git.
 
-## Why deployment is not enabled by this workflow yet
+## Blue-green Docker deployment
 
-The current Compose file defines one backend service and the existing Nginx frontend proxies to that
-single service. Replacing that container in place would introduce downtime and is not a rolling
-deployment. A blue/green backend service pair and a controlled proxy switch must be implemented and
-tested before the runner is allowed to modify production containers.
+The Compose deployment uses a stable blue backend as its initial active instance. The Nginx upstream is stored in
+`deploy/nginx/upstream.conf`. The deployment script:
+
+1. Pulls the immutable commit-SHA image.
+2. Starts the inactive backend container (blue or green) with the production Compose environment.
+3. Waits for its Docker health check.
+4. Validates the Nginx configuration and atomically switches the upstream.
+5. Reloads Nginx and keeps the previous backend running for rollback.
+
+If candidate health, Nginx validation or reload fails, the script leaves or restores the previous upstream and removes
+the failed candidate. The previous backend is intentionally retained until the next deployment reuses that slot.
+
+## One-time host configuration required for automatic deployment
+
+The repository can build the image automatically after an administrator publishes a template. Automatic host deployment
+requires a self-hosted GitHub Actions runner because the workflow must access the Docker host and its protected
+production configuration.
+
+1. Register a Linux self-hosted runner on the Docker host and add the labels `self-hosted` and `digitalinvitation`.
+2. Run it under a dedicated non-root account with the minimum Docker permissions required.
+3. Set the runner service environment variable `DI_ENV_FILE` to the absolute path of the host's protected production
+   `.env` file. Optionally set `DI_COMPOSE_PROJECT=digitalinvitation` if the Compose project uses another name.
+4. Give the runner GHCR pull access. The workflow uses its scoped `GITHUB_TOKEN` to authenticate.
+5. In repository Actions variables, set `DI_DEPLOY_ENABLED=true` only after the runner and production Compose stack
+   have been prepared and tested.
+
+The deploy job runs only for pushes to `template-releases`. Without the runner and the repository variable, image
+builds still complete but no production host is modified.
+
+Never add a runner registration token, PAT, SSH private key, database password, JWT secret, FileServer Master Key or
+production `.env` file to the repository. Uploaded template JavaScript runs only inside the sandboxed iframe; it is
+never executed by the runner or on the Docker host.
