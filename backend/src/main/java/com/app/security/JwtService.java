@@ -19,10 +19,10 @@ public class JwtService {
             throw new IllegalStateException("APP_JWT_SECRET must contain at least 32 bytes");
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
-    public String issue(String userId, String email, String role) {
+    public String issue(String userId, String email, String role, long authVersion) {
         Instant now = Instant.now();
         return Jwts.builder().issuer(properties.issuer()).subject(userId).claim("email", email)
-            .claim("role", role).issuedAt(Date.from(now))
+            .claim("role", role).claim("ver", authVersion).issuedAt(Date.from(now))
             .expiration(Date.from(now.plusSeconds(properties.accessTokenMinutes() * 60)))
             .signWith(key()).compact();
     }
