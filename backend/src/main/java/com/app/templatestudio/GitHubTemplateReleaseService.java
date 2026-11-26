@@ -84,23 +84,25 @@ public class GitHubTemplateReleaseService {
     private JsonNode ensureReleaseBranch() throws Exception {
         String refPath = "/repos/" + repository + "/git/ref/heads/" + branch;
         HttpResponse<String> existing = send("GET", refPath, null);
-        if (existing.statusCode() == 200) {
-            HttpResponse<String> sync = send("POST", "/repos/" + repository + "/merges",
+        if (existing.statusCode() == 404) {
+            JsonNode base = request("GET", "/repos/" + repository + "/git/ref/heads/" + baseBranch, null, 200);
+            String baseSha = base.path("object").path("sha").asText();
+            if (baseSha.isBlank()) throw new IllegalStateException("Configured GitHub base branch does not exist");
+            request("POST", "/repos/" + repository + "/git/refs",
+                    Map.of("ref", "refs/heads/" + branch, "sha", baseSha), 201);
+        } else if (existing.statusCode() != 200) {
+            throw responseError(existing);
+        } else {
+            // Keep the release branch current with application code and migrations before
+            // adding another template ZIP. The release branch remains the deployment source.
+            HttpResponse<String> merge = send("POST", "/repos/" + repository + "/merges",
                     Map.of("base", branch, "head", baseBranch,
-                            "commit_message", "Sync application changes before publishing a template"));
-            if (sync.statusCode() != 201 && sync.statusCode() != 204) throw responseError(sync);
-            HttpResponse<String> refreshed = send("GET", refPath, null);
-            if (refreshed.statusCode() != 200) throw responseError(refreshed);
-            return mapper.readTree(refreshed.body());
+                            "commit_message", "Sync " + baseBranch + " into template release branch"), null);
+            if (merge.statusCode() != 201 && merge.statusCode() != 204) {
+                throw responseError(merge);
+            }
         }
-        if (existing.statusCode() != 404) throw responseError(existing);
-
-        JsonNode base = request("GET", "/repos/" + repository + "/git/ref/heads/" + baseBranch, null, 200);
-        String baseSha = base.path("object").path("sha").asText();
-        if (baseSha.isBlank()) throw new IllegalStateException("Configured GitHub base branch does not exist");
-        JsonNode created = request("POST", "/repos/" + repository + "/git/refs",
-                Map.of("ref", "refs/heads/" + branch, "sha", baseSha), 201);
-        return created;
+        return request("GET", refPath, null, 200);
     }
 
     private JsonNode request(String method, String path, Object body, int expectedStatus) throws Exception {
