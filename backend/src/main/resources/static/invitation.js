@@ -47,6 +47,8 @@ async function load() {
     locale = content.locale === "hi" ? "hi" : "en";
     document.documentElement.lang = locale;
     window.InvitationRenderer.render($("invitation-render"), snapshot);
+    document.body.classList.add("invitation-page");
+    document.documentElement.dataset.invitationFont = snapshot.design?.font === "sans" ? "sans" : "serif";
 
     $("loading").classList.add("hidden");
     $("invitation").classList.remove("hidden");
