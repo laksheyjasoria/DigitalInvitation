@@ -269,6 +269,10 @@ class DatabaseMigrationSmokeTest {
                 "SELECT template_version_id FROM invitation_publication WHERE public_slug=?",
                 java.util.UUID.class, slug);
         assertEquals(templateVersionId, publishedVersionId);
+        assertThrows(org.springframework.dao.DataAccessException.class,
+                () -> jdbc.update("UPDATE invitation_template_version SET definition='{}'::jsonb WHERE id=?", templateVersionId));
+        assertThrows(org.springframework.dao.DataAccessException.class,
+                () -> jdbc.update("UPDATE invitation_publication SET published_snapshot='{}'::jsonb WHERE public_slug=?", slug));
 
         mockMvc.perform(get("/api/v1/public/invitations/" + slug))
                 .andExpect(status().isOk())
