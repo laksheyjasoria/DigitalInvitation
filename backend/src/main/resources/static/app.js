@@ -6,7 +6,8 @@ const previewFrames=()=>[...document.querySelectorAll("iframe[data-template-prev
 function renderPreviewFrame(frame,snapshot){if(!frame)return;frame._diSnapshot=snapshot;if(snapshot?.templatePackagePreview){frame._diMode="package";window.TemplatePackageRenderer.renderIntoFrame(frame,snapshot.templatePackagePreview,snapshot);return;}if(frame._diMode==="package"){frame._diMode="platform";frame._diReady=false;frame.dataset.previewInitialized="";}if(!frame.dataset.previewInitialized){frame._diMode="platform";frame.dataset.previewInitialized="true";frame.src="/template-preview-frame.html";return;}if(frame._diReady)frame.contentWindow.postMessage({type:"di-preview-render",snapshot},"*");}
 window.addEventListener("message",event=>{
  const frame=previewFrames().find(item=>item.contentWindow===event.source);
- if(!frame||frame._diMode==="package")return;
+ if(!frame)return;
+ if(frame._diMode==="package"){if(event.data?.type==="di-template-resize")frame.style.height=Math.max(520,Math.min(5000,Number(event.data.height)||760))+"px";return;}
  if(event.data?.type==="di-preview-ready"){frame._diReady=true;if(frame._diSnapshot)frame.contentWindow.postMessage({type:"di-preview-render",snapshot:frame._diSnapshot},"*");return;}
  if(event.data?.type==="di-preview-rendered"&&frame.id==="preview-frame"&&previewPendingApproval){
   previewPendingApproval=false;previewReviewed=true;$("create-order").disabled=false;$("payment-message").textContent="Preview rendered. Review it carefully before continuing.";
