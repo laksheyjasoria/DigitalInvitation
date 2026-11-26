@@ -7,7 +7,7 @@ function renderPreviewFrame(frame,snapshot){if(!frame)return;frame._diSnapshot=s
 window.addEventListener("message",event=>{
  const frame=previewFrames().find(item=>item.contentWindow===event.source);
  if(!frame)return;
- if(frame._diMode==="package"){if(event.data?.type==="di-template-resize")frame.style.height=Math.max(520,Math.min(5000,Number(event.data.height)||760))+"px";return;}
+ if(frame._diMode==="package"){if(event.data?.type==="di-template-resize")frame.style.height=Math.max(520,Math.min(5000,Number(event.data.height)||760))+"px";if(event.data?.type==="di-preview-rendered"&&frame.id==="preview-frame"&&previewPendingApproval){previewPendingApproval=false;previewReviewed=true;$("create-order").disabled=false;$("payment-message").textContent="Preview rendered. Review it carefully before continuing.";}return;}
  if(event.data?.type==="di-preview-ready"){frame._diReady=true;if(frame._diSnapshot)frame.contentWindow.postMessage({type:"di-preview-render",snapshot:frame._diSnapshot},"*");return;}
  if(event.data?.type==="di-preview-rendered"&&frame.id==="preview-frame"&&previewPendingApproval){
   previewPendingApproval=false;previewReviewed=true;$("create-order").disabled=false;$("payment-message").textContent="Preview rendered. Review it carefully before continuing.";
