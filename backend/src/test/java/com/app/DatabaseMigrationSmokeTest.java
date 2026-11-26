@@ -31,6 +31,15 @@ class DatabaseMigrationSmokeTest {
     private JdbcTemplate jdbc;
 
     @Test
+    void configurableTimezoneOptionsAreSeeded() {
+        String configured = jdbc.queryForObject(
+                "SELECT setting_value::text FROM system_setting WHERE setting_key='invitation.supported-timezones'",
+                String.class);
+        assertTrue(configured != null && configured.contains("Asia/Kolkata"),
+                "The configurable timezone list should be seeded by Flyway");
+    }
+
+    @Test
     void flywayCreatesCorePlatformTables() {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM information_schema.tables " +
