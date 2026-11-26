@@ -21,13 +21,15 @@ Migration `V14__seed_sample_invitation_templates.sql` installs twelve demonstrat
 
 ## Template definition
 
-Every definition stores:
+Every versioned definition stores:
 
 - A schema version and layout key.
 - A design object with a style identifier, font preference and palette.
-- A configurable list of sections.
-- Field keys and labels, enabled/disabled defaults, required flags and repeatable event sections.
-- The ability to add custom sections when enabled by configuration.
+- Its own ordered section list and default visibility.
+- A field list for each section; field entries may be simple keys or objects with a key, label, type, placeholder and required flag.
+- `requiredFields` per section. These rules are versioned with the template and are enforced by both the browser and the API. A required section cannot be hidden; a required field cannot be removed.
+- Optional fields can be removed from the customer's invitation and restored later. Optional sections can be hidden, renamed and reordered. Repeatable sections support multiple event or schedule entries.
+- Custom fields and sections only when enabled by the template and platform configuration.
 
 The initial sections cover the invitation hero, schedule/functions, story or event description, family details, gallery, RSVP, travel/dress-code information and footer notes. Templates can omit sections that are not relevant to the event. Customers can hide, rename and reorder sections and add custom fields/sections through the existing builder.
 
@@ -35,7 +37,7 @@ The initial sections cover the invitation hero, schedule/functions, story or eve
 
 At publish time the backend copies the selected template's design values into the immutable publication snapshot. Public rendering reads only the snapshot; later admin edits or new template versions do not restyle an already-published invitation. Design colours are validated as six-digit hex values before being assigned to CSS custom properties, and style names are selected from a fixed allowlist. Customer content is rendered as escaped text, never as arbitrary HTML or JavaScript.
 
-The builder shows the selected template description and palette swatches and uses the same palette in its local preview. The public invitation page applies the captured palette responsively.
+The builder generates its form from the selected template definition rather than a shared hard-coded field list. The same definition drives required-field validation and the renderer. Removed optional fields are recorded in the invitation content, so they stay hidden in previews and published pages. The editor preview and public page use the same renderer.
 
 ## Demonstration content
 
