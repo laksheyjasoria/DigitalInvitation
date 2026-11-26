@@ -47,7 +47,10 @@
         applyFields(clone, sections, sectionKey, item);
         container.append(clone);
       });
-      if (!items.length) {\n        const wrapper = container.closest("[data-section-key]");\n        if (wrapper) wrapper.remove(); else container.hidden = true;\n      }
+      if (!items.length) {
+        const wrapper = container.closest("[data-section-key]");
+        if (wrapper) wrapper.remove(); else container.hidden = true;
+      }
     });
 
     applyFields(document, sections, null, null);
