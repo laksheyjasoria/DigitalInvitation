@@ -8,10 +8,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -50,6 +53,9 @@ class DatabaseMigrationSmokeTest {
 
     @Autowired
     private com.app.auth.AuthRateLimitService authRateLimitService;
+
+    @MockBean
+    private com.app.templatestudio.GitHubTemplateReleaseService githubTemplateReleaseService;
 
     @Autowired
     private com.app.invitation.PublicSubmissionRateLimitService publicSubmissionRateLimitService;
@@ -278,6 +284,76 @@ class DatabaseMigrationSmokeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("Original CI Invitation"))
                 .andExpect(jsonPath("$.data.content.locale").value("en"));
+    }
+
+    @Test
+    void adminPublishesValidatedPackageAndCatalogueWaitsForClasspathImage() throws Exception {
+        java.util.UUID adminId = java.util.UUID.randomUUID();
+        String email = "template-publisher-" + adminId + "@example.test";
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Template Publisher','ADMIN','ACTIVE')",
+                adminId, email, "not-used");
+        String token = jwtService.issue(adminId.toString(), email, "ADMIN", 0);
+        java.util.UUID categoryId = jdbc.queryForObject(
+                "SELECT id FROM event_category WHERE category_key='WEDDING'", java.util.UUID.class);
+
+        String definition = "<template id=\"TEMP9999999\" name=\"CI Package\" version=\"1.0.0\" schemaVersion=\"1\">" +
+                "<sections><section key=\"hero\" label=\"Invitation\"><field key=\"headline\" label=\"Heading\" type=\"text\" required=\"true\"/></section></sections></template>";
+        String preview = "<preview><hero><headline>Sample invitation</headline></hero></preview>";
+        byte[] html = "<html><body><main>CI package</main></body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] css = "body{margin:0}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] js = "window.templateReady=true;".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        MockMultipartFile[] files = {
+                new MockMultipartFile("files", "index.html", "text/html", html),
+                new MockMultipartFile("files", "styles.css", "text/css", css),
+                new MockMultipartFile("files", "script.js", "application/javascript", js),
+                new MockMultipartFile("files", "template.xml", "application/xml", definition.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                new MockMultipartFile("files", "preview.xml", "application/xml", preview.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        };
+
+        var upload = mockMvc.perform(multipart("/api/v1/admin/template-studio/packages/files")
+                        .file(files[0]).file(files[1]).file(files[2]).file(files[3]).file(files[4])
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        java.util.UUID packageId = java.util.UUID.fromString(
+                objectMapper.readTree(upload.getResponse().getContentAsString()).path("data").path("id").asText());
+
+        org.mockito.Mockito.when(githubTemplateReleaseService.commitPackage(
+                        org.mockito.ArgumentMatchers.eq("TEMP9999999"),
+                        org.mockito.ArgumentMatchers.eq("1.0.0"),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(byte[].class)))
+                .thenReturn(new com.app.templatestudio.GitHubTemplateReleaseService.ReleaseCommit(
+                        "a".repeat(40), "backend/src/main/resources/templates/packages/TEMP9999999/1.0.0.zip",
+                        "template-releases"));
+
+        var published = mockMvc.perform(post("/api/v1/admin/template-studio/packages/" + packageId + "/publish")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("categoryId", categoryId))))
+                .andExpect(status().isOk())
+                .andReturn();
+        var publishedData = objectMapper.readTree(published.getResponse().getContentAsString()).path("data");
+        assertEquals("PUBLISHED", publishedData.path("status").asText());
+        assertEquals("a".repeat(40), publishedData.path("commitSha").asText());
+
+        java.util.UUID templateVersionId = java.util.UUID.fromString(publishedData.path("templateVersionId").asText());
+        assertEquals("RELEASED", jdbc.queryForObject(
+                "SELECT status FROM template_package_stage WHERE id=?", String.class, packageId));
+        assertEquals("backend/src/main/resources/templates/packages/TEMP9999999/1.0.0.zip",
+                jdbc.queryForObject("SELECT package_resource_path FROM invitation_template_version WHERE id=?",
+                        String.class, templateVersionId));
+
+        var catalogue = mockMvc.perform(get("/api/v1/catalog/categories/" + categoryId + "/templates"))
+                .andExpect(status().isOk())
+                .andReturn();
+        var catalogueRows = objectMapper.readTree(catalogue.getResponse().getContentAsString()).path("data");
+        boolean visibleBeforeImageDeployment = false;
+        for (var row : catalogueRows) {
+            if ("temp9999999".equals(row.path("template_key").asText())) visibleBeforeImageDeployment = true;
+        }
+        assertTrue(!visibleBeforeImageDeployment,
+                "A committed package must not be selectable until its classpath Docker image is deployed");
     }
 
     @Test
