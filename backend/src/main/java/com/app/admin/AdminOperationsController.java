@@ -22,7 +22,7 @@ public class AdminOperationsController {
  @PatchMapping("/users/{id}/status")
  public ApiResponse<?> userStatus(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
   String status=body.get("status");if(!Set.of("ACTIVE","SUSPENDED").contains(status))throw new IllegalArgumentException("Status must be ACTIVE or SUSPENDED");
-  int n=jdbc.update("UPDATE app_user SET status=?,auth_version=auth_version+1,updated_at=now() WHERE id=? AND role='CUSTOMER'",status,id);if(n==0)throw new IllegalArgumentException("Customer account not found");
+  int n=jdbc.update("UPDATE app_user SET status=?,auth_version=auth_version+1,updated_at=now() WHERE id=? AND role='CUSTOMER' AND status IN ('ACTIVE','SUSPENDED')",status,id);if(n==0)throw new IllegalArgumentException("Customer account not found or not eligible for status changes");
   audit.record(UUID.fromString(auth.getName()),"USER_STATUS_CHANGED","USER",id.toString(),"SUCCESS",Map.of("status",status));
   return ApiResponse.success(Map.of("userId",id,"status",status));
  }
