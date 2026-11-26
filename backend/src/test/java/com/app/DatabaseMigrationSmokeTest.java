@@ -188,4 +188,27 @@ class DatabaseMigrationSmokeTest {
         assertTrue(count != null && count == 11,
                 "All core platform tables should exist after Flyway migration");
     }
+    @Test
+    void sampleInvitationTemplatesAreSeededWithDistinctVisualDesigns() {
+        Integer templateCount = jdbc.queryForObject(
+                "SELECT count(*) FROM invitation_template WHERE template_key IN " +
+                "('wedding-floral-garden','wedding-royal-heritage','wedding-minimal-modern'," +
+                "'wedding-sunset-romance','birthday-confetti-pop','birthday-golden-hour'," +
+                "'anniversary-ever-after','anniversary-modern-milestone','family-gathering-bloom'," +
+                "'milestone-achievement','other-festival-lights','other-clean-canvas') " +
+                "AND status='PUBLISHED'",
+                Integer.class);
+        assertTrue(templateCount != null && templateCount == 12,
+                "All twelve sample invitation templates should be published by Flyway");
+
+        Integer styledCount = jdbc.queryForObject(
+                "SELECT count(*) FROM invitation_template t " +
+                "JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
+                "WHERE t.template_key LIKE 'wedding-%' AND v.definition ? 'design' " +
+                "AND v.definition->'design'->'palette' ? 'accent'",
+                Integer.class);
+        assertTrue(styledCount != null && styledCount == 4,
+                "Wedding sample templates should contain a design palette for the public renderer");
+    }
+
 }
