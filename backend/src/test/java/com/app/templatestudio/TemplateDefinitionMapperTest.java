@@ -31,6 +31,7 @@ class TemplateDefinitionMapperTest {
         assertEquals("window.previewReady=true;", preview.get("js"));
         Map<?, ?> assets = (Map<?, ?>) preview.get("assets");
         assertTrue(((String) assets.get("assets/mark.svg")).startsWith("data:image/svg+xml;base64,"));
+        assertTrue(((String) assets.get("assets/animation.js")).startsWith("data:application/javascript;base64,"));
     }
 
     private byte[] zip() throws Exception {
@@ -43,6 +44,7 @@ class TemplateDefinitionMapperTest {
             add(zip, "styles.css", "body{color:#333}");
             add(zip, "script.js", "window.previewReady=true;");
             add(zip, "assets/mark.svg", "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>");
+            add(zip, "assets/animation.js", "window.animationLoaded=true;");
             return bytes.toByteArray();
         }
     }
