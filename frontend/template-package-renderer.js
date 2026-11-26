@@ -41,7 +41,7 @@
 
     const bootstrap = doc.createElement("script");
     bootstrap.textContent = "window.digitalInvitationPreviewData=" + scriptSafeJson(snapshot) + ";";
-    doc.body.append(bootstrap);
+    policy.after(bootstrap);
 
     if (preview.js) {
       const script = doc.createElement("script");
