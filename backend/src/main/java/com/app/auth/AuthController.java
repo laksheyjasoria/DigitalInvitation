@@ -69,14 +69,14 @@ public class AuthController {
  public ResponseEntity<ApiResponse<?>> login(@Valid @RequestBody LoginRequest r,jakarta.servlet.http.HttpServletRequest request){
   String email=r.email().trim().toLowerCase(java.util.Locale.ROOT);String remoteAddress=request.getRemoteAddr();
   rateLimit.assertAllowed(email,remoteAddress);
-  var users=jdbc.query("SELECT id,email,password_hash,role,status FROM app_user WHERE email=?",
-   (rs,n)->Map.of("id",rs.getObject("id").toString(),"email",rs.getString("email"),"hash",rs.getString("password_hash"),"role",rs.getString("role"),"status",rs.getString("status")),email);
+  var users=jdbc.query("SELECT id,email,password_hash,role,status,auth_version FROM app_user WHERE email=?",
+   (rs,n)->Map.of("id",rs.getObject("id").toString(),"email",rs.getString("email"),"hash",rs.getString("password_hash"),"role",rs.getString("role"),"status",rs.getString("status"),"authVersion",rs.getLong("auth_version")),email);
   if(users.isEmpty()||!encoder.matches(r.password(),(String)users.get(0).get("hash"))||!"ACTIVE".equals(users.get(0).get("status"))){
    rateLimit.recordFailure(email,remoteAddress);
    throw new IllegalArgumentException("Invalid email or password, or account is not active");
   }
   rateLimit.clear(email,remoteAddress);
-  var user=users.get(0);String access=jwt.issue((String)user.get("id"),(String)user.get("email"),(String)user.get("role"));
+  var user=users.get(0);String access=jwt.issue((String)user.get("id"),(String)user.get("email"),(String)user.get("role"),((Number)user.get("authVersion")).longValue());
   String refresh=token();createRefreshSession(UUID.fromString((String)user.get("id")),refresh,request);
   ApiResponse<?> body=ApiResponse.success(Map.of("accessToken",access,"tokenType","Bearer",
    "user",Map.of("id",user.get("id"),"email",user.get("email"),"role",user.get("role"))));
@@ -88,11 +88,11 @@ public class AuthController {
  public ResponseEntity<ApiResponse<?>> refresh(@CookieValue(name="di_refresh",required=false)String raw,
     jakarta.servlet.http.HttpServletRequest request){
   if(raw==null||raw.isBlank())return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.SET_COOKIE,clearRefreshCookie().toString()).body(ApiResponse.failure("UNAUTHORIZED","Refresh session is unavailable"));
-  var rows=jdbc.query("SELECT s.id,s.user_id,s.revoked_at,s.expires_at,u.email,u.role,u.status " +
+  var rows=jdbc.query("SELECT s.id,s.user_id,s.revoked_at,s.expires_at,u.email,u.role,u.status,u.auth_version " +
     "FROM auth_refresh_session s JOIN app_user u ON u.id=s.user_id WHERE s.token_hash=? FOR UPDATE OF s",
     (rs,n)->Map.of("sessionId",rs.getObject("id",UUID.class),"userId",rs.getObject("user_id",UUID.class),
       "revoked",rs.getTimestamp("revoked_at")!=null,"expiresAt",rs.getTimestamp("expires_at").toInstant(),
-      "email",rs.getString("email"),"role",rs.getString("role"),"status",rs.getString("status")),hash(raw));
+      "email",rs.getString("email"),"role",rs.getString("role"),"status",rs.getString("status"),"authVersion",rs.getLong("auth_version")),hash(raw));
   if(rows.isEmpty())return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.SET_COOKIE,clearRefreshCookie().toString()).body(ApiResponse.failure("UNAUTHORIZED","Refresh session is invalid"));
   var session=rows.get(0);UUID userId=(UUID)session.get("userId");
   if(Boolean.TRUE.equals(session.get("revoked"))||!((Instant)session.get("expiresAt")).isAfter(Instant.now())||!"ACTIVE".equals(session.get("status"))){
@@ -102,7 +102,7 @@ public class AuthController {
   String next=token();UUID nextId=UUID.randomUUID();
   jdbc.update("UPDATE auth_refresh_session SET revoked_at=now(),replaced_by=? WHERE id=?",nextId,session.get("sessionId"));
   insertRefreshSession(nextId,userId,next,request);
-  String access=jwt.issue(userId.toString(),(String)session.get("email"),(String)session.get("role"));
+  String access=jwt.issue(userId.toString(),(String)session.get("email"),(String)session.get("role"),((Number)session.get("authVersion")).longValue());
   return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,refreshCookie(next).toString())
    .body(ApiResponse.success(Map.of("accessToken",access,"tokenType","Bearer")));
  }
@@ -127,7 +127,7 @@ public class AuthController {
  @Transactional
  public ApiResponse<?> resetPassword(@Valid @RequestBody ResetRequest request){
   UUID user=findToken(request.token(),"PASSWORD_RESET");
-  int changed=jdbc.update("UPDATE app_user SET password_hash=?,updated_at=now() WHERE id=? AND status='ACTIVE'",encoder.encode(request.newPassword()),user);
+  int changed=jdbc.update("UPDATE app_user SET password_hash=?,auth_version=auth_version+1,updated_at=now() WHERE id=? AND status='ACTIVE'",encoder.encode(request.newPassword()),user);
   if(changed!=1)throw new IllegalArgumentException("Password reset is no longer valid");
   jdbc.update("UPDATE auth_token SET consumed_at=now() WHERE user_id=? AND token_type='PASSWORD_RESET' AND consumed_at IS NULL",user);
   jdbc.update("UPDATE auth_refresh_session SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=? AND revoked_at IS NULL",user);
