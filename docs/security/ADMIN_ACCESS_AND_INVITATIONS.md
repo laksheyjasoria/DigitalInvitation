@@ -7,6 +7,10 @@
 - **SUPPORT**: read-only access to the administration dashboard and Template Studio. All write requests are denied by the backend security filter, not only hidden in the UI.
 - **CUSTOMER**: uses the customer invitation workspace only.
 
+## Initial Super Admin account
+
+On the first deployment, configure APP_BOOTSTRAP_ADMIN_EMAIL and APP_BOOTSTRAP_ADMIN_PASSWORD as server-side environment variables. The password must be 8-72 characters and include at least one letter, one number and one symbol. The bootstrap runner creates or repairs that account as ACTIVE SUPER_ADMIN and increments its auth version when it updates an existing account. Do not commit these values to the repository or put them in frontend configuration.
+
 ## Invite-only administrator onboarding
 
 1. A Super Admin opens Administration and creates an invitation for an email address with role ADMIN or SUPPORT.
