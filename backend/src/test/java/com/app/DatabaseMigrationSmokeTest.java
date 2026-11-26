@@ -38,6 +38,9 @@ class DatabaseMigrationSmokeTest {
     private JdbcTemplate jdbc;
 
     @Autowired
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
@@ -175,6 +178,100 @@ class DatabaseMigrationSmokeTest {
                 invitationId, ownerId);
         assertTrue(lockedRows.size() == 1,
                 "The publication query must lock only the owned invitation row");
+    }
+
+    @Test
+    void publishedInvitationRetainsItsExactTemplateVersionAndImmutableSnapshot() throws Exception {
+        java.util.UUID ownerId = java.util.UUID.randomUUID();
+        String email = "published-snapshot-" + ownerId + "@example.test";
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Snapshot Owner','CUSTOMER','ACTIVE')",
+                ownerId, email, "not-used");
+        java.util.UUID templateVersionId = jdbc.queryForObject(
+                "SELECT v.id FROM invitation_template t JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
+                "WHERE t.template_key='wedding-minimal-modern' AND t.status='PUBLISHED'",
+                java.util.UUID.class);
+        String definitionText = jdbc.queryForObject(
+                "SELECT definition::text FROM invitation_template_version WHERE id=?", String.class, templateVersionId);
+        var definition = objectMapper.readTree(definitionText);
+        java.util.List<java.util.Map<String,Object>> sections = new java.util.ArrayList<>();
+        for (var section : definition.path("sections")) {
+            java.util.Map<String,Object> values = new java.util.LinkedHashMap<>();
+            java.util.Map<String,Object> itemValues = new java.util.LinkedHashMap<>();
+            for (var field : section.path("fields")) {
+                String key = field.isTextual() ? field.asText() : field.path("key").asText();
+                String type = field.isTextual() ? "text" : field.path("type").asText("text");
+                String value = switch (type) {
+                    case "date" -> "2027-12-01";
+                    case "time" -> "17:00";
+                    case "number" -> "1";
+                    case "email" -> "ci@example.test";
+                    case "url" -> "https://example.test";
+                    default -> "CI " + key;
+                };
+                if (section.path("repeatable").asBoolean(false)) itemValues.put(key, value);
+                else values.put(key, value);
+            }
+            java.util.Map<String,Object> saved = new java.util.LinkedHashMap<>();
+            saved.put("key", section.path("key").asText());
+            saved.put("label", section.path("label").asText());
+            saved.put("enabled", true);
+            saved.put("values", values);
+            if (section.path("repeatable").asBoolean(false)) saved.put("items", java.util.List.of(itemValues));
+            sections.add(saved);
+        }
+        java.util.Map<String,Object> content = java.util.Map.of("locale", "en", "sections", sections);
+        String token = jwtService.issue(ownerId.toString(), email, "CUSTOMER", 0);
+        var created = mockMvc.perform(post("/api/v1/invitations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "templateVersionId", templateVersionId,
+                                "title", "Original CI Invitation",
+                                "content", content,
+                                "lastFunctionDate", "2027-12-01",
+                                "timezone", "Asia/Kolkata"))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        java.util.UUID invitationId = java.util.UUID.fromString(
+                objectMapper.readTree(created.getResponse().getContentAsString()).path("data").path("id").asText());
+
+        var requiredKeys = jdbc.query(
+                "SELECT substring(setting_key from 17) AS consent_key FROM system_setting " +
+                "WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",
+                (rs, n) -> rs.getString("consent_key"));
+        java.util.Map<String,Boolean> consents = new java.util.LinkedHashMap<>();
+        requiredKeys.forEach(key -> consents.put(key, true));
+        mockMvc.perform(post("/api/v1/invitations/" + invitationId + "/consents")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(consents)))
+                .andExpect(status().isOk());
+
+        var published = mockMvc.perform(post("/api/v1/invitations/" + invitationId + "/publish")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn();
+        String slug = objectMapper.readTree(published.getResponse().getContentAsString()).path("data").path("slug").asText();
+        assertTrue(!slug.isBlank());
+
+        java.util.UUID newerVersionId = java.util.UUID.randomUUID();
+        jdbc.update("INSERT INTO invitation_template_version(id,template_id,version_number,definition,created_by) " +
+                        "SELECT ?,template_id,version_number+1,definition,created_by FROM invitation_template_version WHERE id=?",
+                newerVersionId, templateVersionId);
+        jdbc.update("UPDATE invitation_template SET current_version=(SELECT version_number FROM invitation_template_version WHERE id=?) " +
+                        "WHERE id=(SELECT template_id FROM invitation_template_version WHERE id=?)",
+                newerVersionId, newerVersionId);
+        jdbc.update("UPDATE invitation SET title='Changed draft row',content='{\"locale\":\"changed\"}'::jsonb WHERE id=?", invitationId);
+
+        java.util.UUID publishedVersionId = jdbc.queryForObject(
+                "SELECT template_version_id FROM invitation_publication WHERE public_slug=?",
+                java.util.UUID.class, slug);
+        assertEquals(templateVersionId, publishedVersionId);
+
+        mockMvc.perform(get("/api/v1/public/invitations/" + slug))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Original CI Invitation"))
+                .andExpect(jsonPath("$.data.content.locale").value("en"));
     }
 
     @Test
