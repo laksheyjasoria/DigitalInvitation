@@ -161,6 +161,7 @@ public class TemplateDefinitionMapper {
         if (lower.endsWith(".mp3")) return "audio/mpeg";
         if (lower.endsWith(".ogg")) return "audio/ogg";
         if (lower.endsWith(".json")) return "application/json";
+        if (lower.endsWith(".js")) return "application/javascript";
         if (lower.endsWith(".txt")) return "text/plain";
         return null;
     }
