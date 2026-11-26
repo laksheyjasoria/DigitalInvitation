@@ -48,7 +48,7 @@ The repository can build the image automatically after an administrator publishe
 requires a self-hosted GitHub Actions runner because the workflow must access the Docker host and its protected
 production configuration.
 
-1. Register a Linux self-hosted runner on the Docker host and add the labels `self-hosted` and `digitalinvitation`.
+1. Register a Linux self-hosted runner on the Docker host and add the labels `self-hosted` and `digitalinvitation`. On a Windows Docker host, run the runner inside Ubuntu WSL2 with Docker Desktop WSL integration enabled; the deployment script requires Bash, `grep`, `sed` and the Docker CLI.
 2. Run it under a dedicated non-root account with the minimum Docker permissions required.
 3. Set the runner service environment variable `DI_ENV_FILE` to the absolute path of the host's protected production
    `.env` file. Optionally set `DI_COMPOSE_PROJECT=digitalinvitation` if the Compose project uses another name.
