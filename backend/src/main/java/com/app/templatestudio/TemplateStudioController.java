@@ -18,11 +18,13 @@ public class TemplateStudioController {
     private final JdbcTemplate jdbc;
     private final TemplatePackageValidator validator;
     private final AuditLogService audit;
+    private final TemplateDefinitionMapper definitionMapper;
 
-    public TemplateStudioController(JdbcTemplate jdbc, TemplatePackageValidator validator, AuditLogService audit) {
+    public TemplateStudioController(JdbcTemplate jdbc, TemplatePackageValidator validator, AuditLogService audit, TemplateDefinitionMapper definitionMapper) {
         this.jdbc = jdbc;
         this.validator = validator;
         this.audit = audit;
+        this.definitionMapper = definitionMapper;
     }
 
     @GetMapping("/packages")
@@ -30,6 +32,13 @@ public class TemplateStudioController {
         return ApiResponse.success(jdbc.queryForList(
                 "SELECT id,template_id,template_name,package_version,status,file_count,expanded_bytes,sha256,uploaded_by,created_at,validated_at " +
                 "FROM template_package_stage ORDER BY created_at DESC"));
+    }
+
+    @GetMapping("/packages/{id}/preview")
+    public ApiResponse<?> preview(@PathVariable UUID id) {
+        List<byte[]> rows = jdbc.query("SELECT archive_bytes FROM template_package_stage WHERE id=? AND status IN ('VALIDATED','QUEUED_FOR_RELEASE','RELEASED')", (rs, n) -> rs.getBytes(1), id);
+        if (rows.isEmpty()) throw new IllegalArgumentException("Validated staged template package not found");
+        return ApiResponse.success(definitionMapper.map(rows.get(0)));
     }
 
     @PostMapping(value = "/packages", consumes = "multipart/form-data")
