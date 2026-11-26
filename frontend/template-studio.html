@@ -11,7 +11,6 @@
   <p class="muted">Uploads are stored in private staging and are not published or pushed to GitHub by this action.</p>
  </section>
  <section class="panel"><h2>Staged packages</h2><div id="packages"><p class="muted">Loading…</p></div></section>
- <section class="panel"><h2>XML-driven sample preview</h2><p class="muted">This uses the XML-defined fields and preview.xml sample values in the invitation preview renderer.</p><iframe id="package-preview" title="Template sample preview" sandbox="allow-scripts" style="width:100%;min-height:520px;border:1px solid #ddd;border-radius:14px;background:#f8f6f0" src="/template-preview-frame.html"></iframe><p id="preview-message" class="muted" role="status"></p></section>
  <section class="panel"><h2>Package format</h2><p>Each package contains independent HTML, CSS and JavaScript, an XML form definition, and XML preview data. The XML definition is checked against the platform XSD. External entities and unsafe archive paths are rejected.</p><p class="muted">Publishing, GitHub release branches and Docker deployment will be enabled only after the protected release pipeline is configured.</p></section>
 </main>
 <script src="/template-studio.js" defer></script>
