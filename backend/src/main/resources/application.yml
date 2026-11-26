@@ -52,6 +52,12 @@ app:
       access-token-minutes: ${APP_JWT_ACCESS_TOKEN_MINUTES:15}
       refresh-token-days: ${APP_JWT_REFRESH_TOKEN_DAYS:30}
     refresh-cookie-secure: ${APP_REFRESH_COOKIE_SECURE:true}
+    login:
+      max-attempts: ${APP_LOGIN_MAX_ATTEMPTS:8}
+      window-minutes: ${APP_LOGIN_WINDOW_MINUTES:15}
+      block-minutes: ${APP_LOGIN_BLOCK_MINUTES:15}
+    public-rsvp:
+      max-per-hour: ${APP_PUBLIC_RSVP_MAX_PER_HOUR:5}
 
   payment:
     razorpay:
