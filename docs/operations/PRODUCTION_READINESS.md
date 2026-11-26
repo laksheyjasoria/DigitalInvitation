@@ -6,8 +6,9 @@ This implementation is an integration milestone. Do not accept live customers un
 - [x] Maven verify, frontend JavaScript syntax checks, PostgreSQL 16 Flyway migration smoke test and Docker Compose validation passed in GitHub Actions run #234 on the current stabilization changes.
 - [x] Add a PostgreSQL-backed Spring Boot smoke test that executes Flyway migrations and verifies core tables.
 - [ ] Add PostgreSQL integration tests for all repository queries, ownership filters and transactional workflows.
-- [x] Add persistent per-email/client login throttling and rotating HttpOnly refresh-token sessions; password reset revokes all refresh sessions.
+- [x] Add persistent per-email/client login throttling, rotating HttpOnly refresh-token sessions, password-reset revocation and auth-version invalidation after account/role changes.
 - [ ] Add integration tests for refresh-token expiry/replay, suspended accounts, password-reset invalidation and multi-tab rotation.
+- [x] Add public RSVP throttling per publication/client and scheduled cleanup of expired throttle buckets.
 - [ ] Add cross-user IDOR tests for every invitation, order, media and payment endpoint.
 - [x] Add unit tests for valid/tampered Razorpay checkout signatures and exact raw-body webhook signatures.
 - [ ] Add payment tests for wrong amount/currency/order, duplicate webhook, replay, late webhook, concurrent checkout and refund.
@@ -38,10 +39,10 @@ This implementation is an integration milestone. Do not accept live customers un
 ## Known implementation gaps
 - Access tokens are short-lived; refresh tokens rotate in HttpOnly SameSite cookies and password reset revokes refresh sessions. Automated replay/expiry and browser multi-tab tests remain.
 - Email outbox sends verification/reset messages when SMTP is enabled, but bounce/dead-letter operations need admin tooling.
-- FileServer adapter paths are configurable but not verified against the deployed upload/delete contract.
+- FileServer adapter paths are configurable but not verified against the deployed upload/delete contract. Customer media now has owner-scoped deletion; orphan reconciliation and storage deletion retries remain.
 - Razorpay is the first concrete payment adapter; other providers and provider selection are not implemented. Checkout retry/idempotency and captured-payment settlement are implemented but still require provider sandbox and concurrency tests.
 - Configurable percentage tax, extension orders/settlement and purchase-time pricing/expiry snapshots are implemented in the current branch; coupons, invoice generation, refund administration and payment reconciliation UI are not complete.
-- Basic configurable RSVP capture and owner-only response listing are implemented; RSVP rate limiting/spam controls, attendee management, invitation analytics and full calendar/localization rendering remain.
+- Basic configurable RSVP capture, owner-only response listing and per-publication/client rate limiting are implemented; attendee management, invitation analytics and full calendar/localization rendering remain.
 - Admin dashboard is a first control surface; full user/support/role management, admin MFA and audit search UI remain.
 - UI end-to-end, accessibility, browser, mobile, load and security testing remain.
 
