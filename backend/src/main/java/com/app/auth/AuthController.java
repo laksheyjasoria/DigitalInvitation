@@ -101,8 +101,9 @@ public class AuthController {
    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.SET_COOKIE,clearRefreshCookie().toString()).body(ApiResponse.failure("UNAUTHORIZED","Refresh session expired or was already used"));
   }
   String next=token();UUID nextId=UUID.randomUUID();
-  jdbc.update("UPDATE auth_refresh_session SET revoked_at=now(),replaced_by=? WHERE id=?",nextId,session.get("sessionId"));
   insertRefreshSession(nextId,userId,next,request);
+  int rotated=jdbc.update("UPDATE auth_refresh_session SET revoked_at=now(),replaced_by=? WHERE id=? AND revoked_at IS NULL",nextId,session.get("sessionId"));
+  if(rotated!=1)throw new IllegalStateException("Refresh session changed during rotation");
   String access=jwt.issue(userId.toString(),(String)session.get("email"),(String)session.get("role"),((Number)session.get("authVersion")).longValue());
   return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE,refreshCookie(next).toString())
    .body(ApiResponse.success(Map.of("accessToken",access,"tokenType","Bearer")));
