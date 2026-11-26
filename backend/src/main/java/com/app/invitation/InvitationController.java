@@ -60,7 +60,7 @@ public class InvitationController {
         UUID user=UUID.fromString(auth.getName());
         var invitation=jdbc.queryForList("SELECT version FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",id,user);
         if(invitation.isEmpty())throw new IllegalArgumentException("Invitation not found");
-        var required=jdbc.query("SELECT substring(setting_key from 17) AS consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",
+        var required=jdbc.query("SELECT substring(setting_key from 18) AS consent_key FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",
             (rs,n)->rs.getString("consent_key"));
         if(required.isEmpty()||!consents.keySet().equals(new java.util.HashSet<>(required))||
            consents.values().stream().anyMatch(v->!Boolean.TRUE.equals(v)))
@@ -71,7 +71,7 @@ public class InvitationController {
         for(String key:required){
             String policyType=key.equals("terms")?"TERMS":key.equals("privacy")?"PRIVACY":null;
             String consentVersion=policyType==null?"1":String.valueOf(jdbc.queryForObject("SELECT max(version_number) FROM policy_document WHERE policy_type=? AND status='PUBLISHED'",Integer.class,policyType));
-            jdbc.update("INSERT INTO invitation_consent(user_id,invitation_id,consent_key,consent_version,accepted,source_ip,user_agent,content_version) VALUES (?,?,?,?,true,?,?,?) ON CONFLICT (invitation_id,content_version,consent_key,consent_version) DO UPDATE SET accepted=true,accepted_at=now(),source_ip=EXCLUDED.source_ip,user_agent=EXCLUDED.user_agent",
+            jdbc.update("INSERT INTO invitation_consent(user_id,invitation_id,consent_key,consent_version,accepted,source_ip,user_agent,content_version) VALUES (?,?,?,?,true,?::inet,?,?) ON CONFLICT (invitation_id,content_version,consent_key,consent_version) DO UPDATE SET accepted=true,accepted_at=now(),source_ip=EXCLUDED.source_ip,user_agent=EXCLUDED.user_agent",
                 user,id,key,consentVersion,ip,agent==null?null:agent.substring(0,Math.min(agent.length(),500)),version);
         }
         return ApiResponse.success(Map.of("accepted",required.size(),"contentVersion",version));
@@ -123,7 +123,7 @@ public class InvitationController {
         }else{
             grace=settings.getInt("invitation.expiry.grace-days");
             expirySettingVersion=jdbc.queryForObject("SELECT version FROM system_setting WHERE setting_key='invitation.expiry.grace-days'",Long.class);
-            requiredConsentKeys=jdbc.query("SELECT substring(setting_key from 17) FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",(rs,n)->rs.getString(1));
+            requiredConsentKeys=jdbc.query("SELECT substring(setting_key from 18) FROM system_setting WHERE setting_key LIKE 'consent.required.%' AND setting_value='true'::jsonb",(rs,n)->rs.getString(1));
             var accepted=jdbc.query("SELECT consent_key,consent_version FROM invitation_consent WHERE invitation_id=? AND user_id=? AND content_version=? AND accepted=true",
                 (rs,n)->Map.of("key",rs.getString("consent_key"),"version",rs.getString("consent_version")),id,user,inv.get("version"));
             accepted.forEach(row->consentVersions.put((String)row.get("key"),(String)row.get("version")));
