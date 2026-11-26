@@ -30,7 +30,7 @@
     document.querySelectorAll("[data-repeat]").forEach(container => {
       const sectionKey = container.dataset.repeat;
       const section = sectionByKey(sectionKey);
-      const items = Array.isArray(section?.items) ? section.items : [];
+      const items = Array.isArray(section?.items) ? section.items.filter(entry =>\n        entry && Object.values(entry).some(value => value !== null && value !== undefined && String(value).trim().length)) : [];
       const templateNode = container.querySelector(":scope > template");
       const prototype = templateNode
         ? templateNode.content.cloneNode(true)
