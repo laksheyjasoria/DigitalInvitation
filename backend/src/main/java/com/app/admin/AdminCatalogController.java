@@ -19,7 +19,7 @@ public class AdminCatalogController {
         UUID id=UUID.randomUUID();jdbc.update("INSERT INTO event_category(id,category_key,display_name,description,sort_order) VALUES (?,?,?,?,?)",id,key,name,b.get("description"),Integer.parseInt(b.getOrDefault("sortOrder","0")));
         return ApiResponse.success(Map.of("id",id,"key",key));
     }
-    @PostMapping("/templates") public ApiResponse<?> createTemplate(@RequestBody Map<String,Object> b,Authentication auth){
+    @PostMapping("/templates") @org.springframework.transaction.annotation.Transactional public ApiResponse<?> createTemplate(@RequestBody Map<String,Object> b,Authentication auth){
         UUID category=UUID.fromString(String.valueOf(b.get("categoryId")));String key=String.valueOf(b.get("key")).trim().toLowerCase(),name=String.valueOf(b.get("name")).trim();
         Object definition=b.get("definition");if(!key.matches("[a-z0-9_-]{2,100}")||name.isBlank()||!(definition instanceof Map))throw new IllegalArgumentException("Template key, name and JSON definition are required");
         UUID id=UUID.randomUUID(),version=UUID.randomUUID();
@@ -29,7 +29,7 @@ public class AdminCatalogController {
         audit.record(UUID.fromString(auth.getName()),"TEMPLATE_CREATED","TEMPLATE",id.toString(),"SUCCESS",Map.of("key",key));
         return ApiResponse.success(Map.of("id",id,"versionId",version));
     }
-    @PostMapping("/templates/{id}/versions") public ApiResponse<?> addVersion(@PathVariable UUID id,@RequestBody Map<String,Object> b,Authentication auth){
+    @PostMapping("/templates/{id}/versions") @org.springframework.transaction.annotation.Transactional public ApiResponse<?> addVersion(@PathVariable UUID id,@RequestBody Map<String,Object> b,Authentication auth){
         Object definition=b.get("definition");if(!(definition instanceof Map))throw new IllegalArgumentException("Template definition is required");
         Integer current=jdbc.queryForObject("SELECT current_version FROM invitation_template WHERE id=?",Integer.class,id);if(current==null)throw new IllegalArgumentException("Template not found");
         int next=current+1;UUID version=UUID.randomUUID();
