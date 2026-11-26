@@ -2,7 +2,7 @@
 <launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
   <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="com.app.DigitalInvitationApplication"/>
   <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="DigitalInvitation-backend"/>
-  <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dspring.profiles.active=local"/>
+  <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dspring.profiles.active=local -Dapp.public-base-url=http://localhost:8088"/>
   <stringAttribute key="org.eclipse.jdt.launching.ATTR_USE_CLASSPATH_ONLY_JAR" value="false"/>
   <booleanAttribute key="org.eclipse.debug.core.ATTR_USE_PERSISTENT_PROPERTY" value="true"/>
   <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
