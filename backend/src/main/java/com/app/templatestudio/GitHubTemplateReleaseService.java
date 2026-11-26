@@ -97,7 +97,7 @@ public class GitHubTemplateReleaseService {
             // adding another template ZIP. The release branch remains the deployment source.
             HttpResponse<String> merge = send("POST", "/repos/" + repository + "/merges",
                     Map.of("base", branch, "head", baseBranch,
-                            "commit_message", "Sync " + baseBranch + " into template release branch"), null);
+                            "commit_message", "Sync " + baseBranch + " into template release branch"));
             if (merge.statusCode() != 201 && merge.statusCode() != 204) {
                 throw responseError(merge);
             }
