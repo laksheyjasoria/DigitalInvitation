@@ -84,7 +84,7 @@ app:
       password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
   invitation:
     expiry:
-      cron: ${APP_INVITATION_EXPIRY_CRON:0 */15 * * * *
+      cron: "0 */15 * * * *"
 
   mail:
     enabled: ${APP_MAIL_ENABLED:false}
