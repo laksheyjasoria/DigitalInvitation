@@ -162,7 +162,12 @@ public class AdminCatalogController {
         return result.isBlank() ? null : result;
     }
 
-    private static boolean parseBoolean(Object value) {\n        if (value instanceof Boolean result) return result;\n        throw new IllegalArgumentException("Enabled must be true or false");\n    }\n\n    private static int integer(Object value, String label) {
+    private static boolean parseBoolean(Object value) {
+        if (value instanceof Boolean result) return result;
+        throw new IllegalArgumentException("Enabled must be true or false");
+    }
+
+    private static int integer(Object value, String label) {
         try {
             return Integer.parseInt(String.valueOf(value));
         } catch (Exception ex) {
