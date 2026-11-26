@@ -1,0 +1,1 @@
+(function(){const params=new URLSearchParams(location.search);document.querySelectorAll("[data-field]").forEach(node=>{const key=node.dataset.field;const value=params.get(key);if(value)node.textContent=value;});})();
