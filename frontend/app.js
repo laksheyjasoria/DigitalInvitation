@@ -9,7 +9,7 @@ $("auth-form").addEventListener("submit",async e=>{e.preventDefault();$("auth-er
 $("logout").addEventListener("click",async()=>{try{await fetch(API+"/auth/logout",{method:"POST",credentials:"same-origin"});}catch(_){}token="";sessionStorage.removeItem("di_token");activeInvitation=null;showAuth();});
 async function loadWorkspace(){try{const [list,cats]=await Promise.all([api("/invitations"),api("/catalog/categories")]);categories=cats;$("category").innerHTML=cats.map(c=>'<option value="'+c.id+'">'+escapeHtml(c.display_name)+'</option>').join("");$("invitation-list").innerHTML=list.length?list.map(i=>'<div class="invite-item"><button class="quiet" data-id="'+i.id+'"><strong>'+escapeHtml(i.title)+'</strong><small>'+escapeHtml(i.status)+' · '+(i.last_function_date||"Date not set")+'</small></button>'+(extensionEnabled&&["PUBLISHED","EXPIRED"].includes(i.status)?'<button class="secondary" data-extend="'+i.id+'">Extend</button>':"")+'</div>').join(""):'<p class="muted">No invitations yet. Create your first one.</p>';document.querySelectorAll("[data-id]").forEach(b=>b.addEventListener("click",()=>openInvitation(b.dataset.id)));document.querySelectorAll("[data-extend]").forEach(b=>b.addEventListener("click",()=>startExtension(b.dataset.extend)));}catch(e){$("auth-error").textContent=e.message;}}
 async function loadTemplates(categoryId){const rows=await api("/catalog/categories/"+categoryId+"/templates");$("template").innerHTML=rows.map(t=>'<option value="'+t.template_version_id+'">'+escapeHtml(t.display_name)+'</option>').join("");if(rows.length){const detail=await api("/catalog/templates/"+rows[0].id);templateDefinition=typeof detail.definition==="string"?JSON.parse(detail.definition):detail.definition;renderSections();}else{templateDefinition={sections:[]};renderSections();}}
-$("new-invitation").addEventListener("click",async()=>{try{await loadTemplates($("category").value);activeInvitation=null;draftContent=null;$("publish-invitation").classList.add("hidden");$("resume-checkout").classList.add("hidden");$("published-result").classList.add("hidden");$("save").classList.remove("hidden");$("create-order").classList.remove("hidden");$("invite-title").value="";$("function-date").value="";$("timezone").value=defaultTimezone;$("empty-editor").classList.add("hidden");$("editor-form").classList.remove("hidden");$("consent-panel").classList.add("hidden");}catch(e){alert(e.message);}});
+$("new-invitation").addEventListener("click",async()=>{try{await loadTemplates($("category").value);activeInvitation=null;draftContent=null;$("rsvp-management").classList.add("hidden");$("publish-invitation").classList.add("hidden");$("resume-checkout").classList.add("hidden");$("published-result").classList.add("hidden");$("save").classList.remove("hidden");$("create-order").classList.remove("hidden");$("invite-title").value="";$("function-date").value="";$("timezone").value=defaultTimezone;$("empty-editor").classList.add("hidden");$("editor-form").classList.remove("hidden");$("consent-panel").classList.add("hidden");}catch(e){alert(e.message);}});
 $("category").addEventListener("change",e=>loadTemplates(e.target.value));
 $("template").addEventListener("change",async()=>{try{const rows=await api("/catalog/categories/"+$("category").value+"/templates");const selected=rows.find(t=>t.template_version_id===$("template").value);if(selected){const d=await api("/catalog/templates/"+selected.id);templateDefinition=typeof d.definition==="string"?JSON.parse(d.definition):d.definition;renderSections();}}catch(e){alert(e.message);}});
 function renderSections(){
@@ -26,10 +26,33 @@ $("add-section").addEventListener("click",()=>{if(!customSectionsEnabled||templa
 function readContent(){return {sections:[...document.querySelectorAll(".section-card")].map((card,i)=>{const values={};card.querySelectorAll("[data-field]").forEach(input=>{if(input.value.trim())values[input.dataset.field]=input.value.trim();});return {key:templateDefinition.sections[i].key,label:card.querySelector("[data-label]").value,enabled:card.querySelector("[data-section]").checked,values};})};}
 async function saveDraft(){const title=$("invite-title").value.trim();if(!title)throw new Error("Enter an invitation title");const content=readContent();draftContent=content;const body={title,content,templateVersionId:$("template").value,lastFunctionDate:$("function-date").value||null,timezone:$("timezone").value};if(!activeInvitation){body.templateVersionId=$("template").value;if(!body.templateVersionId)throw new Error("Choose an available template");const result=await api("/invitations",{method:"POST",body:JSON.stringify(body)});activeInvitation=result.id;}else await api("/invitations/"+activeInvitation,{method:"PUT",body:JSON.stringify(body)});await loadWorkspace();$("consent-panel").classList.remove("hidden");$("payment-message").textContent="Draft saved. Review each declaration before payment.";}
 $("save").addEventListener("click",async()=>{try{await saveDraft();}catch(e){$("payment-message").textContent=e.message;}});
+async function loadRsvps(){
+ if(!activeInvitation)return;
+ try{
+  const rows=await api("/invitations/"+activeInvitation+"/rsvps");
+  $("rsvp-list").innerHTML=rows.length?rows.map(r=>'<div class="invite-item"><strong>'+escapeHtml(r.guest_name)+'</strong><small>'+escapeHtml(r.attendance)+' · '+escapeHtml(r.guest_count)+' guest(s) · '+escapeHtml(r.guest_email||"No email")+'</small>'+(r.message?'<p>'+escapeHtml(r.message)+'</p>':"")+'<small>'+escapeHtml(r.created_at)+'</small></div>').join(""):'<p class="muted">No guest responses yet.</p>';
+ }catch(e){$("rsvp-list").innerHTML='<p class="error">'+escapeHtml(e.message)+'</p>';}
+}
+async function exportRsvps(){
+ if(!activeInvitation)return;
+ try{
+  const path=API+"/invitations/"+activeInvitation+"/rsvps/export";
+  const send=()=>fetch(path,{credentials:"same-origin",headers:token?{Authorization:"Bearer "+token}:{}});
+  let response=await send();
+  if(response.status===401&&await refreshAccessToken())response=await send();
+  if(!response.ok)throw new Error("Unable to export RSVP responses ("+response.status+")");
+  const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement("a");
+  link.href=url;link.download="invitation-rsvps.csv";document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+ }catch(e){alert(e.message);}
+}
+$("load-rsvps").addEventListener("click",loadRsvps);
+$("export-rsvps").addEventListener("click",exportRsvps);
 async function openInvitation(id){try{const i=await api("/invitations/"+id);activeInvitation=id;draftContent=typeof i.content==="string"?JSON.parse(i.content):i.content;$("empty-editor").classList.add("hidden");$("editor-form").classList.remove("hidden");$("invite-title").value=i.title;$("function-date").value=i.last_function_date||"";$("timezone").value=i.timezone;const cats=categories;for(const c of cats){const rows=await api("/catalog/categories/"+c.id+"/templates");const found=rows.find(t=>t.template_version_id===i.template_version_id);if(found){$("category").value=c.id;await loadTemplates(c.id);$("template").value=found.template_version_id;break;}}if(templateDefinition&&draftContent?.sections){const known=new Set(templateDefinition.sections.map(x=>x.key));draftContent.sections.filter(x=>!known.has(x.key)).forEach(x=>templateDefinition.sections.push({key:x.key,label:x.label,enabled:x.enabled,custom:true,fields:Object.keys(x.values||{})}));}renderSections();
  $("consent-panel").classList.remove("hidden");
  const state=i.status;
- $("save").classList.toggle("hidden",state==="READY_TO_PUBLISH"||state==="PUBLISHED");
+ $("rsvp-management").classList.toggle("hidden",!["PUBLISHED","EXPIRED"].includes(state));
+ if(["PUBLISHED","EXPIRED"].includes(state))await loadRsvps();
+ $("save").classList.toggle("hidden",state==="READY_TO_PUBLISH"||state==="PUBLISHED"||state==="EXPIRED");
  $("create-order").classList.toggle("hidden",state==="READY_TO_PUBLISH"||state==="PUBLISHED"||state==="PENDING_PAYMENT"&&["CREATED","PAYMENT_PENDING"].includes(i.order_status));
  $("resume-checkout").classList.toggle("hidden",!(state==="PENDING_PAYMENT"&&["CREATED","PAYMENT_PENDING"].includes(i.order_status)));
  $("publish-invitation").classList.toggle("hidden",state!=="READY_TO_PUBLISH");
