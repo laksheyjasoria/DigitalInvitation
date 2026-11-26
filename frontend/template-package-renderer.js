@@ -25,7 +25,7 @@
     source.querySelectorAll('link[rel~="stylesheet"]').forEach(node => { const href=node.getAttribute("href")||""; if(!href.startsWith("data:text/css"))node.remove(); });
     source.querySelectorAll("script[src]").forEach(node => {
       const src = node.getAttribute("src") || "";
-      if (/(?:^|\/)script\.js(?:[?#].*)?$/i.test(src)) node.remove();
+      if (src.replace(/^\.\//, "").replace(/^\//, "") === "script.js") node.remove();
     });
 
     const html = replaceAssetReferences(source.documentElement.outerHTML, preview.assets);
