@@ -51,9 +51,11 @@ function renderCategories(rows){
  }));
 }
 function renderTemplates(rows){
- $("templates").innerHTML=rows.map(t=>'<article class="setting-row"><strong>'+escapeHtml(t.display_name)+'</strong> · '+escapeHtml(t.category_name)+' · '+escapeHtml(t.template_key)+
-  ' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+
-  '<div class="button-row"><button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Publish")+'</button></div></article>').join("");
+ $("templates").innerHTML=rows.map(t=>{
+  const canToggle=["PUBLISHED","ARCHIVED"].includes(t.status);
+  const action=canToggle?'<button class="quiet" data-template-status="'+t.id+'" data-status="'+(t.status==="PUBLISHED"?"ARCHIVED":"PUBLISHED")+'">'+(t.status==="PUBLISHED"?"Archive":"Restore")+'</button>':'<span class="muted">Publish a validated package in Template Studio</span>';
+  return '<article class="setting-row"><strong>'+escapeHtml(t.display_name)+'</strong> · '+escapeHtml(t.category_name)+' · '+escapeHtml(t.template_key)+' · '+escapeHtml(t.status)+' · v'+escapeHtml(t.current_version)+'<div class="button-row">'+action+'</div></article>';
+ }).join("");
  document.querySelectorAll("[data-template-status]").forEach(b=>b.addEventListener("click",async()=>{
   try{await api("/admin/templates/"+b.dataset.templateStatus+"/status",{method:"PATCH",body:JSON.stringify({status:b.dataset.status})});msg("Template status updated.");await load();}
   catch(e){msg(e.message);}
