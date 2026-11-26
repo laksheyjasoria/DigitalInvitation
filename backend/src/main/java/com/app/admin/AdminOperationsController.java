@@ -22,14 +22,14 @@ public class AdminOperationsController {
  @PatchMapping("/users/{id}/status")
  public ApiResponse<?> userStatus(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
   String status=body.get("status");if(!Set.of("ACTIVE","SUSPENDED").contains(status))throw new IllegalArgumentException("Status must be ACTIVE or SUSPENDED");
-  int n=jdbc.update("UPDATE app_user SET status=?,updated_at=now() WHERE id=? AND role='CUSTOMER'",status,id);if(n==0)throw new IllegalArgumentException("Customer account not found");
+  int n=jdbc.update("UPDATE app_user SET status=?,auth_version=auth_version+1,updated_at=now() WHERE id=? AND role='CUSTOMER'",status,id);if(n==0)throw new IllegalArgumentException("Customer account not found");
   audit.record(UUID.fromString(auth.getName()),"USER_STATUS_CHANGED","USER",id.toString(),"SUCCESS",Map.of("status",status));
   return ApiResponse.success(Map.of("userId",id,"status",status));
  }
  @PatchMapping("/users/{id}/role")
  public ApiResponse<?> userRole(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
   requireSuperAdmin(auth);String role=body.get("role");if(!Set.of("CUSTOMER","ADMIN","SUPER_ADMIN").contains(role))throw new IllegalArgumentException("Invalid role");
-  int n=jdbc.update("UPDATE app_user SET role=?,updated_at=now() WHERE id=?",role,id);if(n==0)throw new IllegalArgumentException("User not found");
+  int n=jdbc.update("UPDATE app_user SET role=?,auth_version=auth_version+1,updated_at=now() WHERE id=?",role,id);if(n==0)throw new IllegalArgumentException("User not found");
   audit.record(UUID.fromString(auth.getName()),"USER_ROLE_CHANGED","USER",id.toString(),"SUCCESS",Map.of("role",role));
   return ApiResponse.success(Map.of("userId",id,"role",role));
  }
