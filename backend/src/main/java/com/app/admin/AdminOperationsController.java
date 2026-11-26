@@ -19,14 +19,14 @@ public class AdminOperationsController {
   int safe=Math.max(1,Math.min(limit,100));String term=search==null?"%":"%"+search.trim().toLowerCase()+"%";
   return ApiResponse.success(jdbc.queryForList("SELECT id,email,display_name,role,status,email_verified_at,created_at FROM app_user WHERE email LIKE ? OR lower(display_name) LIKE ? ORDER BY created_at DESC LIMIT ?",term,term,safe));
  }
- @PatchMapping("/users/{id}/status")
+ @PatchMapping("/users/{id}/status") @org.springframework.transaction.annotation.Transactional
  public ApiResponse<?> userStatus(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
   String status=body.get("status");if(!Set.of("ACTIVE","SUSPENDED").contains(status))throw new IllegalArgumentException("Status must be ACTIVE or SUSPENDED");
   int n=jdbc.update("UPDATE app_user SET status=?,auth_version=auth_version+1,updated_at=now() WHERE id=? AND role='CUSTOMER' AND status IN ('ACTIVE','SUSPENDED')",status,id);if(n==0)throw new IllegalArgumentException("Customer account not found or not eligible for status changes");
   audit.record(UUID.fromString(auth.getName()),"USER_STATUS_CHANGED","USER",id.toString(),"SUCCESS",Map.of("status",status));
   return ApiResponse.success(Map.of("userId",id,"status",status));
  }
- @PatchMapping("/users/{id}/role")
+ @PatchMapping("/users/{id}/role") @org.springframework.transaction.annotation.Transactional
  public ApiResponse<?> userRole(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
   requireSuperAdmin(auth);String role=body.get("role");if(!Set.of("CUSTOMER","ADMIN","SUPER_ADMIN").contains(role))throw new IllegalArgumentException("Invalid role");
   int n=jdbc.update("UPDATE app_user SET role=?,auth_version=auth_version+1,updated_at=now() WHERE id=?",role,id);if(n==0)throw new IllegalArgumentException("User not found");
@@ -43,7 +43,7 @@ public class AdminOperationsController {
   int safe=Math.max(1,Math.min(limit,250));
   return ApiResponse.success(jdbc.queryForList("SELECT o.id,o.order_number,o.currency,o.amount_minor,o.status,o.created_at,u.email,i.title FROM customer_order o JOIN app_user u ON u.id=o.user_id JOIN invitation i ON i.id=o.invitation_id ORDER BY o.created_at DESC LIMIT ?",safe));
  }
- @PostMapping("/invitations/{id}/revoke")
+ @PostMapping("/invitations/{id}/revoke") @org.springframework.transaction.annotation.Transactional
  public ApiResponse<?> revoke(@PathVariable UUID id,@RequestBody Map<String,String> body,Authentication auth){
   String reason=body.getOrDefault("reason","Administrative revocation");
   int n=jdbc.update("UPDATE invitation_publication SET revoked_at=now() WHERE invitation_id=? AND revoked_at IS NULL",id);
