@@ -3,7 +3,7 @@ name: Platform CI
 on:
   push:
     branches: ["feature/platform-implementation"]
-    paths: ["backend/**","frontend/**","docker-compose.yml","docker-compose.eclipse.yml",".github/workflows/backend-ci.yml"]
+    paths: ["backend/**","frontend/**","docker-compose.yml","docker-compose.eclipse.yml",".github/workflows/backend-ci.yml",".github/workflows/docker-release.yml","deploy/**","scripts/**",".env.example"]
   pull_request:
     types: [opened, synchronize, reopened, edited]
     paths:
@@ -12,6 +12,10 @@ on:
       - "docker-compose.yml"
       - "docker-compose.eclipse.yml"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/docker-release.yml"
+      - "deploy/**"
+      - "scripts/**"
+      - ".env.example"
 
 permissions:
   contents: read
