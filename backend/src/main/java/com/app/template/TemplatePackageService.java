@@ -84,7 +84,7 @@ public class TemplatePackageService {
                 Map<String,Object> value=new LinkedHashMap<>();
                 value.put("key",key); value.put("label",section.getAttribute("label"));
                 value.put("required",bool(section,"required",false)); value.put("enabled",bool(section,"enabled",true));
-                value.put("repeatable",bool(section,"repeatable",false)); value.put("fields",refs);
+                value.put("repeatable",bool(section,"repeatable",false)); value.put("fields",refs.stream().map(fields::get).toList()); value.put("allowRename",false);
                 value.put("requiredFields",refs.stream().filter(k->Boolean.TRUE.equals(fields.get(k).get("required"))).toList());
                 sections.add(value);
             }
@@ -94,7 +94,7 @@ public class TemplatePackageService {
             result.put("category",root.getAttribute("category")); result.put("description",root.getAttribute("description"));
             result.put("version",root.getAttribute("version")); result.put("layout",root.getAttribute("layout"));
             result.put("fields",new ArrayList<>(fields.values())); result.put("sections",sections);
-            result.put("customSectionsAllowed",false); result.put("previewUrl","/template-preview/"+id);
+            result.put("customSectionsAllowed",false); result.put("customFieldsAllowed",false); result.put("allowSectionReorder",false); result.put("allowSectionRename",false); result.put("packageFormat","XML_PACKAGE"); result.put("previewUrl","/template-preview/"+id);
             result.put("previewData",getPreviewData(id));
             return result;
         } catch(TemplatePackageException ex) { throw ex; }
