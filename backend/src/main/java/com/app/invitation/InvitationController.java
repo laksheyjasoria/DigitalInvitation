@@ -188,7 +188,6 @@ public class InvitationController {
                 boolean requiredSection=section.path("required").asBoolean(false);
                 boolean enabled=saved==null?section.path("enabled").asBoolean(true):saved.path("enabled").asBoolean(section.path("enabled").asBoolean(true));
                 if(requiredSection&&!enabled)throw new IllegalArgumentException("This template requires the section: "+section.path("label").asText(key));
-                if(!enabled)continue;
 
                 java.util.Set<String> requiredFields=new java.util.LinkedHashSet<>();
                 for(com.fasterxml.jackson.databind.JsonNode required:section.path("requiredFields")){
@@ -233,7 +232,7 @@ public class InvitationController {
                         boolean populated=item.fields().hasNext();
                         if(!populated)continue;
                         hasPopulatedItem=true;
-                        for(String fieldKey:requiredFields){
+                        if(enabled)for(String fieldKey:requiredFields){
                             if(!hiddenFields.contains(fieldKey)&&!hasText(item.path(fieldKey)))
                                 throw new IllegalArgumentException("Complete required field '"+fieldKey+"' in every "+section.path("label").asText(key)+" entry");
                         }
@@ -249,11 +248,11 @@ public class InvitationController {
                         if(!values.isObject())throw new IllegalArgumentException("Section values must be an object");
                         validateAllowedFieldKeys(values,allowedFields,key);
                     }
-                    for(String fieldKey:requiredFields){
+                    if(enabled)for(String fieldKey:requiredFields){
                         if(!hiddenFields.contains(fieldKey)&&(values==null||!hasText(values.path(fieldKey))))
                             throw new IllegalArgumentException("Complete required field '"+fieldKey+"' in "+section.path("label").asText(key));
                     }
-                    if(requiredSection&&requiredFields.isEmpty()&&(values==null||!values.fields().hasNext()))
+                    if(enabled&&requiredSection&&requiredFields.isEmpty()&&(values==null||!values.fields().hasNext()))
                         throw new IllegalArgumentException("Complete the required section: "+section.path("label").asText(key));
                 }
             }
