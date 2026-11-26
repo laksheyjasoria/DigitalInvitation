@@ -20,9 +20,9 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 public class MediaController {
  private final JdbcTemplate jdbc;private final StorageProvider storage;private final com.app.config.SystemSettingService settings;
  public MediaController(JdbcTemplate jdbc,StorageProvider storage,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.storage=storage;this.settings=settings;}
- @PostMapping public ApiResponse<?> upload(@PathVariable UUID invitationId,@RequestParam("file")MultipartFile file,Authentication auth){
+ @PostMapping @org.springframework.transaction.annotation.Transactional public ApiResponse<?> upload(@PathVariable UUID invitationId,@RequestParam("file")MultipartFile file,Authentication auth){
   UUID owner=UUID.fromString(auth.getName());
-  jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT')",UUID.class,invitationId,owner);
+  jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT') FOR UPDATE",UUID.class,invitationId,owner);
   long maxBytes=settings.getLong("invitation.media.max-file-bytes");
   long maxFiles=settings.getLong("invitation.media.max-files");
   if(file.isEmpty()||file.getSize()>maxBytes)throw new IllegalArgumentException("File is empty or exceeds the configured upload limit");
@@ -45,6 +45,18 @@ public class MediaController {
  public ResponseEntity<StreamingResponseBody> content(@PathVariable UUID invitationId,@PathVariable UUID mediaId,Authentication auth){
   var rows=jdbc.query("SELECT storage_key,content_type,original_filename FROM customer_media WHERE id=? AND invitation_id=? AND owner_user_id=?",(rs,n)->Map.of("key",rs.getString("storage_key"),"type",rs.getString("content_type"),"name",rs.getString("original_filename")),mediaId,invitationId,UUID.fromString(auth.getName()));
   if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);return stream(rows.get(0));
+ }
+ @DeleteMapping("/{mediaId}")
+ @org.springframework.transaction.annotation.Transactional
+ public ApiResponse<?> delete(@PathVariable UUID invitationId,@PathVariable UUID mediaId,Authentication auth){
+  UUID owner=UUID.fromString(auth.getName());
+  var rows=jdbc.query("SELECT storage_key FROM customer_media WHERE id=? AND invitation_id=? AND owner_user_id=?",
+   (rs,n)->rs.getString("storage_key"),mediaId,invitationId,owner);
+  if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND,"Media not found");
+  storage.delete(rows.get(0));
+  int deleted=jdbc.update("DELETE FROM customer_media WHERE id=? AND invitation_id=? AND owner_user_id=?",mediaId,invitationId,owner);
+  if(deleted!=1)throw new IllegalStateException("Media metadata could not be removed");
+  return ApiResponse.success(Map.of("id",mediaId,"deleted",true));
  }
  @PatchMapping("/{mediaId}/visibility")
  public ApiResponse<?> visibility(@PathVariable UUID invitationId,@PathVariable UUID mediaId,@RequestBody Map<String,String> body,Authentication auth){
