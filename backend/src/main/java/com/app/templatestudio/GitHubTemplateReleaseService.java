@@ -84,7 +84,15 @@ public class GitHubTemplateReleaseService {
     private JsonNode ensureReleaseBranch() throws Exception {
         String refPath = "/repos/" + repository + "/git/ref/heads/" + branch;
         HttpResponse<String> existing = send("GET", refPath, null);
-        if (existing.statusCode() == 200) return mapper.readTree(existing.body());
+        if (existing.statusCode() == 200) {
+            HttpResponse<String> sync = send("POST", "/repos/" + repository + "/merges",
+                    Map.of("base", branch, "head", baseBranch,
+                            "commit_message", "Sync application changes before publishing a template"));
+            if (sync.statusCode() != 201 && sync.statusCode() != 204) throw responseError(sync);
+            HttpResponse<String> refreshed = send("GET", refPath, null);
+            if (refreshed.statusCode() != 200) throw responseError(refreshed);
+            return mapper.readTree(refreshed.body());
+        }
         if (existing.statusCode() != 404) throw responseError(existing);
 
         JsonNode base = request("GET", "/repos/" + repository + "/git/ref/heads/" + baseBranch, null, 200);
