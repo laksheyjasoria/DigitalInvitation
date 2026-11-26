@@ -27,3 +27,19 @@
 :root[data-invitation-font="sans"]{--invitation-display-font:Arial,Helvetica,sans-serif}
 :root[data-invitation-font="serif"]{--invitation-display-font:Georgia,"Times New Roman",serif}
 @media(max-width:640px){.invitation-page #invitation{margin:16px 10px;padding:24px 18px}.invitation-page .section-card{padding:18px 2px}}
+
+
+.template-info{border:1px solid var(--line);background:#fffefa;padding:12px 14px;margin:0 0 16px;line-height:1.6}
+.template-info>strong{color:var(--ink)}
+.template-info small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+.template-swatches{display:flex;gap:6px;margin-top:8px}
+.template-swatches i{display:block;width:18px;height:18px;border-radius:50%;border:1px solid #0002}
+.invitation-preview{background:var(--invitation-background,#f3f0e7);color:var(--invitation-text,#292923);border-color:var(--invitation-accent,#747a58);padding:clamp(20px,5vw,42px);text-align:center}
+.invitation-preview h2,.invitation-preview h3{font-family:Georgia,"Times New Roman",serif;color:var(--invitation-accent,#747a58);font-weight:500}
+.invitation-preview .section-card{background:var(--invitation-surface,#fffdf8);border:0;border-top:1px solid color-mix(in srgb,var(--invitation-accent,#747a58) 30%,transparent);margin:16px 0}
+.invitation-preview .section-card p{display:flex;flex-direction:column;gap:3px}
+.invitation-preview .section-card p strong{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--invitation-muted,#77766e)}
+.invitation-preview.theme-royal{border:4px double var(--invitation-accent)}
+.invitation-preview.theme-floral,.invitation-preview.theme-botanical{border-radius:28px 3px 28px 3px}
+.invitation-preview.theme-playful{border-radius:24px}
+.invitation-preview.theme-bold{border-top:8px solid var(--invitation-accent)}
