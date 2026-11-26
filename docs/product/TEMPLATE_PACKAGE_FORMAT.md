@@ -76,6 +76,33 @@ The root element is **template** and requires **id**, **name**, **version** and 
 
 The preview script receives **window.digitalInvitationPreviewData**, containing the template title, the XML-derived sample content and the mapped template definition.
 
+## Customer data binding
+
+Use HTML data attributes to connect the XML field keys to customer-entered values. The renderer inserts values with DOM text APIs, not HTML parsing.
+
+- Add `data-field="headline"` to the element that should display the XML field with key `headline`.
+- If a field key is used in more than one section, add `data-section="hero"` to scope it to that section.
+- Put an optional section wrapper on an element with `data-section-key="family"`; the wrapper is removed when the customer disables that optional section.
+- For a repeatable section, add `data-repeat="events"` to its list container and place a direct-child `<template>` inside it. Use `data-field` on elements inside the template. The renderer clones the template once for each populated entry and hides the container when no entries have values.
+
+Example:
+
+~~~html
+<section data-section-key="events">
+  <div data-repeat="events">
+    <template>
+      <article>
+        <h2 data-field="eventName"></h2>
+        <p data-field="date"></p>
+        <p data-field="venue"></p>
+      </article>
+    </template>
+  </div>
+</section>
+~~~
+
+The preview and published invitation use the same data-binding behavior. Include a reduced-motion alternative for animations and bundle all required assets locally.
+
 ## Assets and limits
 
 Allowed assets include HTML, CSS, JavaScript, XML, SVG, PNG, JPEG, WebP, GIF, AVIF, WOFF2, TTF, OTF, MP4, WebM, MP3, OGG, JSON and TXT. Packages are limited to 150 files, 10 MB compressed and 25 MB expanded. Absolute paths, parent-directory traversal, duplicate paths and server-side executables are rejected.
