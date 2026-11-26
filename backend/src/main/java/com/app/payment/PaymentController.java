@@ -62,7 +62,6 @@ public class PaymentController {
         return ApiResponse.success(Map.of("orderId",orderId,"orderNumber",orderNumber,"baseAmountMinor",baseAmount,"taxPercent",taxPercent,"taxAmountMinor",taxAmount,"amountMinor",amount,"currency",currency));
     }
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/extensions/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createExtensionOrder(@PathVariable UUID id,Authentication auth){
