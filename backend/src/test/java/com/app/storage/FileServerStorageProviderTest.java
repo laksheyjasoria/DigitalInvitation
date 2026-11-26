@@ -159,6 +159,13 @@ class FileServerStorageProviderTest {
                 "/master-drive/uploads/{uploadId}/status",
                 "/master-drive/files/{fileId}/download",
                 "/master-drive/files/{fileId}", 30, 100));
+
+        assertThrows(IllegalStateException.class, () -> new FileServerStorageProvider(
+                RestClient.builder(), BASE_URL, MASTER_KEY, "drive", "DigitalInvitation",
+                "//attacker.test/upload",
+                "/master-drive/uploads/{uploadId}/status",
+                "/master-drive/files/{fileId}/download",
+                "/master-drive/files/{fileId}", 30, 100));
     }
 
     private FileServerStorageProvider provider(
