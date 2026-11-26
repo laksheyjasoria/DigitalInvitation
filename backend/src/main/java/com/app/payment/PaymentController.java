@@ -23,7 +23,7 @@ public class PaymentController {
     public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
         if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
-        var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status='DRAFT'",id,user);
+        var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status='DRAFT' FOR UPDATE",id,user);
         long baseAmount=settings.getLong("pricing.base-price-minor");
         BigDecimal taxPercent=settings.getDecimal("pricing.tax-percent");
         if(baseAmount<0||taxPercent.compareTo(BigDecimal.ZERO)<0||taxPercent.compareTo(new BigDecimal("100"))>0)throw new IllegalStateException("Configured pricing is invalid");
@@ -142,30 +142,126 @@ public class PaymentController {
     }
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/webhooks/razorpay")
-    public ApiResponse<?> webhook(@RequestHeader("X-Razorpay-Signature")String signature,@RequestBody String body){
-        if(provider==null||!provider.name().equals("RAZORPAY")||!provider.verifyWebhookSignature(body,signature))
+    public ApiResponse<?> webhook(@RequestHeader("X-Razorpay-Signature") String signature,
+                                  @RequestBody String body) {
+        if (provider == null || !"RAZORPAY".equals(provider.name())
+                || !provider.verifyWebhookSignature(body, signature)) {
             throw new IllegalArgumentException("Invalid webhook signature");
-        try{
-            var root=mapper.readTree(body);String eventId=root.path("id").asText();String eventType=root.path("event").asText();
-            if(eventId.isBlank())throw new IllegalArgumentException("Webhook event id is required");
-            int inserted=jdbc.update("INSERT INTO payment_webhook_event(provider,provider_event_id,event_type,payload,processing_status) VALUES ('RAZORPAY',?,?,?::jsonb,'RECEIVED') ON CONFLICT(provider,provider_event_id) DO NOTHING",eventId,eventType,body);
-            if(inserted==0)return ApiResponse.success(Map.of("received",true,"duplicate",true));
-            var payment=root.path("payload").path("payment").path("entity");
-            String paymentId=payment.path("id").asText();String gatewayOrderId=payment.path("order_id").asText();
-            if(eventType.equals("payment.captured")){
-                if(paymentId.isBlank()||gatewayOrderId.isBlank())throw new IllegalArgumentException("Captured payment event is incomplete");
-                int updated=jdbc.update("UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED',verified_at=now(),updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND amount_minor=? AND currency=? AND status IN ('INITIATED','AUTHORIZED')",
-                    paymentId,gatewayOrderId,payment.path("amount").asLong(),payment.path("currency").asText());
-                if(updated==1){
-                    UUID paidOrderId=jdbc.queryForObject("SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?",UUID.class,gatewayOrderId);
-                    settlement.settle(paidOrderId,provider.name(),paymentId);
-                }
-            }else if(eventType.equals("payment.failed")){
-                jdbc.update("UPDATE payment_transaction SET status='FAILED',updated_at=now() WHERE provider='RAZORPAY' AND provider_order_id=? AND status IN ('INITIATED','AUTHORIZED')",gatewayOrderId);
-                jdbc.update("UPDATE customer_order SET status='CREATED',updated_at=now() WHERE id=(SELECT order_id FROM payment_transaction WHERE provider='RAZORPAY' AND provider_order_id=?) AND status='PAYMENT_PENDING'",gatewayOrderId);
+        }
+
+        final com.fasterxml.jackson.databind.JsonNode root;
+        try {
+            root = mapper.readTree(body);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid webhook payload");
+        }
+
+        String eventId = root.path("id").asText();
+        String eventType = root.path("event").asText();
+        if (eventId.isBlank() || eventType.isBlank()) {
+            throw new IllegalArgumentException("Webhook event id and type are required");
+        }
+
+        int inserted = jdbc.update(
+                "INSERT INTO payment_webhook_event(provider,provider_event_id,event_type,payload,processing_status) " +
+                "VALUES ('RAZORPAY',?,?,?::jsonb,'RECEIVED') " +
+                "ON CONFLICT(provider,provider_event_id) DO NOTHING",
+                eventId, eventType, body);
+        if (inserted == 0) {
+            return ApiResponse.success(Map.of("received", true, "duplicate", true));
+        }
+
+        if ("payment.captured".equals(eventType)) {
+            var payment = root.path("payload").path("payment").path("entity");
+            String paymentId = payment.path("id").asText();
+            String gatewayOrderId = payment.path("order_id").asText();
+            String gatewayStatus = payment.path("status").asText();
+            long amount = payment.path("amount").asLong(-1);
+            String currency = payment.path("currency").asText();
+
+            if (paymentId.isBlank() || gatewayOrderId.isBlank() || !"captured".equals(gatewayStatus)) {
+                rejectWebhook(eventId, "Captured event is incomplete or not captured");
+                return ApiResponse.success(Map.of("received", true, "rejected", true));
             }
-            jdbc.update("UPDATE payment_webhook_event SET processing_status='PROCESSED',processed_at=now() WHERE provider='RAZORPAY' AND provider_event_id=?",eventId);
-        }catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid webhook payload");}
-        return ApiResponse.success(Map.of("received",true));
+
+            var matches = jdbc.query(
+                    "SELECT p.id,p.order_id,p.provider_payment_id,p.status,p.amount_minor,p.currency," +
+                    "o.status AS order_status FROM payment_transaction p " +
+                    "JOIN customer_order o ON o.id=p.order_id " +
+                    "WHERE p.provider='RAZORPAY' AND p.provider_order_id=? FOR UPDATE OF p,o",
+                    (rs, n) -> {
+                        Map<String, Object> row = new java.util.HashMap<>();
+                        row.put("transactionId", rs.getObject("id", UUID.class));
+                        row.put("orderId", rs.getObject("order_id", UUID.class));
+                        row.put("paymentId", rs.getString("provider_payment_id"));
+                        row.put("transactionStatus", rs.getString("status"));
+                        row.put("amount", rs.getLong("amount_minor"));
+                        row.put("currency", rs.getString("currency"));
+                        row.put("orderStatus", rs.getString("order_status"));
+                        return row;
+                    }, gatewayOrderId);
+
+            if (matches.isEmpty()) {
+                rejectWebhook(eventId, "No local payment transaction matches the provider order");
+                return ApiResponse.success(Map.of("received", true, "rejected", true));
+            }
+
+            var transaction = matches.get(0);
+            boolean amountMatches = ((Number) transaction.get("amount")).longValue() == amount;
+            boolean currencyMatches = currency.equals(transaction.get("currency"));
+            String transactionStatus = (String) transaction.get("transactionStatus");
+            String orderStatus = (String) transaction.get("orderStatus");
+            String previousPaymentId = (String) transaction.get("paymentId");
+
+            if (!amountMatches || !currencyMatches
+                    || java.util.Set.of("CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED").contains(orderStatus)
+                    || ("CAPTURED".equals(transactionStatus) && !paymentId.equals(previousPaymentId))
+                    || !java.util.Set.of("INITIATED", "AUTHORIZED", "FAILED", "CAPTURED").contains(transactionStatus)) {
+                rejectWebhook(eventId, "Captured payment does not match a payable local transaction");
+                return ApiResponse.success(Map.of("received", true, "rejected", true));
+            }
+
+            if (!"CAPTURED".equals(transactionStatus)) {
+                jdbc.update(
+                        "UPDATE payment_transaction SET provider_payment_id=?,status='CAPTURED'," +
+                        "verified_at=now(),updated_at=now() WHERE id=?",
+                        paymentId, transaction.get("transactionId"));
+            }
+
+            settlement.settle((UUID) transaction.get("orderId"), provider.name(), paymentId);
+        } else if ("payment.failed".equals(eventType)) {
+            var payment = root.path("payload").path("payment").path("entity");
+            String gatewayOrderId = payment.path("order_id").asText();
+            if (!gatewayOrderId.isBlank()) {
+                jdbc.update(
+                        "UPDATE payment_transaction SET status='FAILED',updated_at=now() " +
+                        "WHERE provider='RAZORPAY' AND provider_order_id=? " +
+                        "AND status IN ('INITIATED','AUTHORIZED')",
+                        gatewayOrderId);
+                jdbc.update(
+                        "UPDATE customer_order SET status='CREATED',updated_at=now() " +
+                        "WHERE id=(SELECT order_id FROM payment_transaction " +
+                        "WHERE provider='RAZORPAY' AND provider_order_id=?) " +
+                        "AND status='PAYMENT_PENDING'",
+                        gatewayOrderId);
+            }
+        }
+
+        jdbc.update(
+                "UPDATE payment_webhook_event SET processing_status='PROCESSED',processed_at=now() " +
+                "WHERE provider='RAZORPAY' AND provider_event_id=?",
+                eventId);
+        return ApiResponse.success(Map.of("received", true));
+    }
+
+    private void rejectWebhook(String eventId, String reason) {
+        jdbc.update(
+                "UPDATE payment_webhook_event SET processing_status='REJECTED',processed_at=now() " +
+                "WHERE provider='RAZORPAY' AND provider_event_id=?",
+                eventId);
+        jdbc.update(
+                "INSERT INTO audit_log(action,resource_type,resource_id,outcome,metadata) " +
+                "VALUES ('PAYMENT_WEBHOOK_REJECTED','PAYMENT_WEBHOOK',?,'REJECTED',?::jsonb)",
+                eventId, mapper.valueToTree(Map.of("reason", reason)).toString());
     }
 }
