@@ -28,10 +28,13 @@ public class TemplateDefinitionMapper {
             List<Map<String, Object>> sections = new java.util.ArrayList<>();
             List<Map<String, Object>> sampleSections = new java.util.ArrayList<>();
             NodeList sectionNodes = root.getElementsByTagName("section");
+            java.util.Set<String> sectionKeys = new java.util.HashSet<>();
 
             for (int i = 0; i < sectionNodes.getLength(); i++) {
                 Element section = (Element) sectionNodes.item(i);
                 String key = required(section, "key");
+                if (!sectionKeys.add(key)) throw new IllegalArgumentException("Duplicate template section key: " + key);
+                java.util.Set<String> fieldKeys = new java.util.HashSet<>();
                 List<Map<String, Object>> fields = new java.util.ArrayList<>();
                 List<String> requiredFields = new java.util.ArrayList<>();
                 Map<String, Object> values = new LinkedHashMap<>();
@@ -43,8 +46,13 @@ public class TemplateDefinitionMapper {
                 for (int j = 0; j < fieldNodes.getLength(); j++) {
                     Element field = (Element) fieldNodes.item(j);
                     String fieldKey = required(field, "key");
+                    if (!fieldKeys.add(fieldKey)) throw new IllegalArgumentException("Duplicate field key in section " + key + ": " + fieldKey);
                     String type = required(field, "type");
+                    if (!java.util.Set.of("text","longtext","date","time","email","phone","location","number","url").contains(type))
+                        throw new IllegalArgumentException("Unsupported field type: " + type);
                     boolean fieldRequired = Boolean.parseBoolean(field.getAttribute("required"));
+                    boolean fieldOptional = Boolean.parseBoolean(field.getAttribute("optional"));
+                    if (fieldRequired && fieldOptional) throw new IllegalArgumentException("A required field cannot be optional: " + fieldKey);
                     repeatable |= Boolean.parseBoolean(field.getAttribute("repeatable")) || type.equals("repeatable");
 
                     Map<String, Object> mappedField = new LinkedHashMap<>();
@@ -52,7 +60,7 @@ public class TemplateDefinitionMapper {
                     mappedField.put("label", required(field, "label"));
                     mappedField.put("type", normalizeType(type));
                     mappedField.put("required", fieldRequired);
-                    mappedField.put("optional", Boolean.parseBoolean(field.getAttribute("optional")));
+                    mappedField.put("optional", fieldOptional);
                     mappedField.put("placeholder", field.getAttribute("placeholder"));
                     fields.add(mappedField);
                     if (fieldRequired) requiredFields.add(fieldKey);
@@ -105,6 +113,7 @@ public class TemplateDefinitionMapper {
             definition.put("templateId", required(root, "id"));
             definition.put("name", required(root, "name"));
             definition.put("version", required(root, "version"));
+            definition.put("packageVersion", required(root, "version"));
             definition.put("sections", sections);
 
             Map<String, Object> result = new LinkedHashMap<>();
