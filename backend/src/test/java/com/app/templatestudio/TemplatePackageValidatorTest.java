@@ -29,6 +29,13 @@ class TemplatePackageValidatorTest {
     }
 
     @Test
+    void rejectsUnsupportedXmlFieldTypesBeforeStaging() {
+        String invalid = definition().replace("type=\\"text\\"", "type=\\"widget\\"");
+        assertThrows(IllegalArgumentException.class,
+                () -> validator.validate(packageZip(invalid, preview(), false)));
+    }
+
+    @Test
     void rejectsArchivePathTraversal() {
         assertThrows(IllegalArgumentException.class,
                 () -> validator.validate(packageZip(definition(), preview(), true)));
