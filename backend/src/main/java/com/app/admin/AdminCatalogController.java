@@ -81,7 +81,7 @@ public class AdminCatalogController {
         return ApiResponse.success(jdbc.queryForList(
                 "SELECT t.id,t.category_id,c.display_name AS category_name,t.template_key,t.display_name," +
                 "t.description,t.status,t.current_version,v.id AS template_version_id,v.definition::text AS definition," +
-                "t.updated_at FROM invitation_template t JOIN event_category c ON c.id=t.category_id " +
+                "v.definition_format,v.package_path,t.updated_at FROM invitation_template t JOIN event_category c ON c.id=t.category_id " +
                 "LEFT JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
                 "ORDER BY c.sort_order,t.display_name"));
     }
