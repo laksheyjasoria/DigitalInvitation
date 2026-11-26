@@ -90,6 +90,8 @@ jobs:
         run: bash -n scripts/deploy-blue-green.sh
       - name: Validate Docker release workflow YAML
         run: ruby -e 'require "yaml"; YAML.load_file(".github/workflows/docker-release.yml")'
+      - name: Build backend container image without pushing
+        run: docker build --tag digitalinvitation-ci:${{ github.sha }} ./backend
       - name: Validate Docker Compose configuration
         run: |
           cp .env.example .env
