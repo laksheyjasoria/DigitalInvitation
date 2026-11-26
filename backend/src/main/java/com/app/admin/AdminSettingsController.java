@@ -15,7 +15,7 @@ public class AdminSettingsController {
     public AdminSettingsController(JdbcTemplate jdbc,ObjectMapper mapper,com.app.audit.AuditLogService audit){this.jdbc=jdbc;this.mapper=mapper;this.audit=audit;}
     public record SettingRequest(String valueType,Object value,String description){}
     @GetMapping public ApiResponse<?> list(){return ApiResponse.success(jdbc.queryForList("SELECT setting_key,setting_value::text AS setting_value,value_type,description,updated_at FROM system_setting WHERE is_sensitive=false ORDER BY setting_key"));}
-    @PutMapping("/{key}") public ApiResponse<?> update(@PathVariable String key,@RequestBody SettingRequest req,Authentication auth){
+    @PutMapping("/{key}") @org.springframework.transaction.annotation.Transactional public ApiResponse<?> update(@PathVariable String key,@RequestBody SettingRequest req,Authentication auth){
         if(key.isBlank()||key.length()>160||!key.matches("[a-zA-Z0-9._-]+"))throw new IllegalArgumentException("Invalid setting key");
         if(req==null||req.value()==null||req.valueType()==null||!java.util.Set.of("STRING","INTEGER","LONG","DECIMAL","BOOLEAN","JSON").contains(req.valueType().toUpperCase(java.util.Locale.ROOT)))
             throw new IllegalArgumentException("A supported setting value and type are required");
