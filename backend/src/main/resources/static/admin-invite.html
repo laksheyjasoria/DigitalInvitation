@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Accept administrator invitation</title><link rel="stylesheet" href="/app.css"></head>
+<body><header class="top"><a class="brand" href="/">D <span>digital invitation</span></a></header>
+<main class="shell"><section class="panel auth"><p class="eyebrow">ADMINISTRATION ACCESS</p><h1>Set up your account.</h1><p class="muted">Create a password to accept your single-use invitation. The link expires after 24 hours.</p>
+<form id="invite-form"><label>Your name<input name="displayName" maxlength="120" required autocomplete="name"></label><label>Password<input name="password" type="password" minlength="8" maxlength="72" required autocomplete="new-password" pattern="(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s]).{8,72}" title="At least 8 characters with one letter, one number and one symbol"></label><button class="primary" type="submit">Accept invitation</button><p id="invite-message" class="muted" role="status" aria-live="polite"></p></form></section></main>
+<footer>Administrator invitations are single-use and expire automatically.</footer><script src="/admin-invite.js" defer></script></body></html>
