@@ -62,6 +62,10 @@ The adapter defaults to a 300-second upload completion timeout and polls every 1
 
 **Important:** these routes are implemented on the FileServer `feature/master-drive-storage-api` branch. Deploy that branch (or merge its API into the deployed FileServer) before enabling this adapter. The DigitalInvitation adapter must not be enabled until the target FileServer has the Master Drive routes and the configured drive exists. Verify upload, status polling, download/range, delete, auth, concurrency and recovery against the actual deployed instance.
 
+## Customer media feature flag
+
+Customer photo gallery/upload is disabled in the browser and blocked by the backend by default. Keep `APP_INVITATION_MEDIA_CUSTOMER_ENABLED=false` in the protected runtime environment and `CUSTOMER_MEDIA_UPLOADS_ENABLED=false` in the customer frontend. To re-enable later, set the backend variable to true and deliberately change the frontend feature flag; the media endpoints and FileServer storage adapter remain in place.
+
 ## GitHub template publishing and Docker deployment
 
 Template package publication is an explicit Admin/Super Admin action. Uploading a package only stages it for validation and preview; it does not commit to Git. When GitHub publishing is enabled, the Publish action commits the validated immutable ZIP to the configured release branch. The release workflow verifies the backend, builds and pushes an immutable image to GHCR, and deploys only when the protected deployment gate is enabled.
