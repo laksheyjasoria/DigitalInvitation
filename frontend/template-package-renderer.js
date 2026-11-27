@@ -31,7 +31,15 @@
     const qrUrl = String(snapshot?.locationQrUrl || "").trim();
     document.querySelectorAll("[data-location-qr]").forEach(node => {
       const section = node.closest("[data-location-qr-section]") || node.parentElement;
-      if (!locationUrl || !qrUrl) { if (section) section.remove(); return; }
+      if (!locationUrl) { if (section) section.remove(); return; }
+      if (!qrUrl) {
+        node.remove();
+        const placeholder = document.createElement("div");
+        placeholder.className = "location-qr-placeholder";
+        placeholder.textContent = "Location QR appears here after publishing";
+        if (section) section.append(placeholder);
+        return;
+      }
       if (node.tagName === "IMG") {
         node.setAttribute("src", qrUrl);
         node.setAttribute("alt", "QR code to open the event location");
