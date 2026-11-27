@@ -74,7 +74,7 @@ public class TemplatePackageValidator {
             throw new IllegalArgumentException("Template package is missing: " + String.join(", ", missing));
         }
         String html = new String(indexHtml, StandardCharsets.UTF_8);
-        Matcher qrSlotMatcher = Pattern.compile("(?is)<img\b(?=[^>]*\bdata-location-qr(?:\s|=|>))[^>]*>").matcher(html);
+        Matcher qrSlotMatcher = Pattern.compile("(?is)<img\\b(?=[^>]*\\bdata-location-qr(?:\\s|=|>))[^>]*>").matcher(html);
         int qrSlotCount = 0;
         while (qrSlotMatcher.find()) qrSlotCount++;
         if (qrSlotCount != 1) {
