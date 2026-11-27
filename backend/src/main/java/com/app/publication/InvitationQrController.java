@@ -23,7 +23,7 @@ public class InvitationQrController {
  public InvitationQrController(JdbcTemplate jdbc){this.jdbc=jdbc;}
 
  @GetMapping(value="/{slug}/qr",produces=MediaType.IMAGE_PNG_VALUE)
- public ResponseEntity<byte[]> qr(@PathVariable String slug)throws Exception{
+ public ResponseEntity<byte[]> qr(@PathVariable("slug") String slug)throws Exception{
   var rows=jdbc.query(
    "SELECT p.published_snapshot->'content'->>'locationUrl' AS location_url " +
    "FROM invitation_publication p WHERE p.public_slug=? AND p.revoked_at IS NULL AND p.expires_at>now()",
