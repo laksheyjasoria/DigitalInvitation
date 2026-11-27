@@ -126,7 +126,7 @@
     const doc = parser.parseFromString(html, "text/html");
     const policy = doc.createElement("meta");
     policy.httpEquiv = "Content-Security-Policy";
-    policy.content = "default-src 'none'; img-src data: blob:; font-src data: blob:; style-src 'unsafe-inline' data:; script-src 'unsafe-inline' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'; media-src data: blob:";
+    policy.content = "default-src 'none'; img-src 'self' data: blob:; font-src data: blob:; style-src 'unsafe-inline' data:; script-src 'unsafe-inline' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'; media-src data: blob:";
     doc.head.prepend(policy);
 
     const bootstrap = doc.createElement("script");
