@@ -50,7 +50,7 @@ public class AdminCatalogController {
 
     @PatchMapping("/categories/{id}")
     @Transactional
-    public ApiResponse<?> updateCategory(@PathVariable UUID id, @RequestBody Map<String, Object> body,
+    public ApiResponse<?> updateCategory(@PathVariable("id") UUID id, @RequestBody Map<String, Object> body,
                                          Authentication auth) {
         var current = jdbc.query("SELECT category_key,display_name,description,enabled,sort_order FROM event_category WHERE id=? FOR UPDATE",
                 (rs, n) -> {
@@ -94,7 +94,7 @@ public class AdminCatalogController {
     }
 
     @PostMapping("/templates/{id}/versions")
-    public ApiResponse<?> addVersion(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
+    public ApiResponse<?> addVersion(@PathVariable("id") UUID id, @RequestBody Map<String, Object> body) {
         throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.GONE,
                 "Create template versions through Template Studio using a validated XML package");
@@ -102,7 +102,7 @@ public class AdminCatalogController {
 
     @PatchMapping("/templates/{id}/status")
     @Transactional
-    public ApiResponse<?> templateStatus(@PathVariable UUID id, @RequestBody Map<String, String> body,
+    public ApiResponse<?> templateStatus(@PathVariable("id") UUID id, @RequestBody Map<String, String> body,
                                          Authentication auth) {
         String status = body.get("status");
         if (status == null || !Set.of("DRAFT", "PUBLISHED", "ARCHIVED").contains(status)) {
