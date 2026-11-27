@@ -18,9 +18,11 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 @RestController
 @RequestMapping("/api/v1/invitations/{invitationId}/media")
 public class MediaController {
- private final JdbcTemplate jdbc;private final StorageProvider storage;private final com.app.config.SystemSettingService settings;
- public MediaController(JdbcTemplate jdbc,StorageProvider storage,com.app.config.SystemSettingService settings){this.jdbc=jdbc;this.storage=storage;this.settings=settings;}
+ private final JdbcTemplate jdbc;private final StorageProvider storage;private final com.app.config.SystemSettingService settings;private final boolean customerMediaEnabled;
+ public MediaController(JdbcTemplate jdbc,StorageProvider storage,com.app.config.SystemSettingService settings,@org.springframework.beans.factory.annotation.Value("${app.invitation.media.customer-enabled:false}") boolean customerMediaEnabled){this.jdbc=jdbc;this.storage=storage;this.settings=settings;this.customerMediaEnabled=customerMediaEnabled;}
+ private void ensureCustomerMediaEnabled(){if(!customerMediaEnabled)throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN,"Customer media features are currently disabled");}
  @PostMapping @org.springframework.transaction.annotation.Transactional public ApiResponse<?> upload(@PathVariable UUID invitationId,@RequestParam("file")MultipartFile file,Authentication auth){
+  ensureCustomerMediaEnabled();
   UUID owner=UUID.fromString(auth.getName());
   jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=? AND status IN ('DRAFT','PENDING_PAYMENT') FOR UPDATE",UUID.class,invitationId,owner);
   long maxBytes=settings.getLong("invitation.media.max-file-bytes");
@@ -40,15 +42,17 @@ public class MediaController {
    return ApiResponse.success(Map.of("id",id,"filename",file.getOriginalFilename()==null?"upload":file.getOriginalFilename(),"contentType",detected,"sizeBytes",bytes.length,"visibility","PRIVATE"));
   }catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalStateException("Media upload failed; check storage provider connectivity and configuration",e);}
  }
- @GetMapping public ApiResponse<?> list(@PathVariable UUID invitationId,Authentication auth){return ApiResponse.success(jdbc.queryForList("SELECT id,original_filename,content_type,size_bytes,visibility,created_at FROM customer_media WHERE invitation_id=? AND owner_user_id=? ORDER BY created_at DESC",invitationId,UUID.fromString(auth.getName())));}
+ @GetMapping public ApiResponse<?> list(@PathVariable UUID invitationId,Authentication auth){ensureCustomerMediaEnabled();return ApiResponse.success(jdbc.queryForList("SELECT id,original_filename,content_type,size_bytes,visibility,created_at FROM customer_media WHERE invitation_id=? AND owner_user_id=? ORDER BY created_at DESC",invitationId,UUID.fromString(auth.getName())));}
  @GetMapping("/{mediaId}/content")
  public ResponseEntity<StreamingResponseBody> content(@PathVariable UUID invitationId,@PathVariable UUID mediaId,Authentication auth){
+  ensureCustomerMediaEnabled();
   var rows=jdbc.query("SELECT storage_key,content_type,original_filename FROM customer_media WHERE id=? AND invitation_id=? AND owner_user_id=?",(rs,n)->Map.of("key",rs.getString("storage_key"),"type",rs.getString("content_type"),"name",rs.getString("original_filename")),mediaId,invitationId,UUID.fromString(auth.getName()));
   if(rows.isEmpty())throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);return stream(rows.get(0));
  }
  @DeleteMapping("/{mediaId}")
  @org.springframework.transaction.annotation.Transactional
  public ApiResponse<?> delete(@PathVariable UUID invitationId,@PathVariable UUID mediaId,Authentication auth){
+  ensureCustomerMediaEnabled();
   UUID owner=UUID.fromString(auth.getName());
   var rows=jdbc.query("SELECT storage_key FROM customer_media WHERE id=? AND invitation_id=? AND owner_user_id=?",
    (rs,n)->rs.getString("storage_key"),mediaId,invitationId,owner);
@@ -60,6 +64,7 @@ public class MediaController {
  }
  @PatchMapping("/{mediaId}/visibility")
  public ApiResponse<?> visibility(@PathVariable UUID invitationId,@PathVariable UUID mediaId,@RequestBody Map<String,String> body,Authentication auth){
+  ensureCustomerMediaEnabled();
   String visibility=body.get("visibility");if(visibility==null||!java.util.Set.of("PRIVATE","PUBLIC").contains(visibility))throw new IllegalArgumentException("Visibility must be PRIVATE or PUBLIC");
   int n=jdbc.update("UPDATE customer_media SET visibility=? WHERE id=? AND invitation_id=? AND owner_user_id=?",visibility,mediaId,invitationId,UUID.fromString(auth.getName()));
   if(n==0)throw new IllegalArgumentException("Media not found");return ApiResponse.success(Map.of("id",mediaId,"visibility",visibility));
