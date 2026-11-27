@@ -170,7 +170,34 @@ $("section-editor").addEventListener("click",invalidateInvitationPreview);
 ["invite-title","function-date","location-url","invitation-locale","timezone"].forEach(id=>{const el=$(id);if(el){el.addEventListener("input",invalidateInvitationPreview);el.addEventListener("change",invalidateInvitationPreview);}});
 const declarations=[["accuracy","I confirm that names, dates, venues and invitation details are accurate."],["preview","I have reviewed and approve the invitation preview."],["rights","I have permission to upload and publish all submitted content and personal information."],["expiry","I understand the invitation validity and expiry policy displayed at checkout."],["publication","I understand that content I publish will be accessible to anyone with its unique link."],["terms","I agree to the applicable Terms and Conditions."],["privacy","I acknowledge the applicable Privacy Policy."]];
 $("consent-items").innerHTML=declarations.map(([key,label])=>'<label class="consent"><input id="consent-'+key+'" type="checkbox"><span>'+escapeHtml(label)+'</span></label>').join("");
-async function loadPolicies(){const keepTimezone=$("timezone")?.value||defaultTimezone,keepLocale=$("invitation-locale")?.value||"en";populateInvitationPreferences(keepTimezone,keepLocale);try{const [policies,config,me]=await Promise.all([api("/public/policies/current"),api("/public/config"),api("/auth/me")]);isAdminUser=["ADMIN","SUPER_ADMIN"].includes(me?.role);defaultTimezone=config.defaultTimezone||"Asia/Kolkata";supportedTimezones=Array.isArray(config.supportedTimezones)&&config.supportedTimezones.length?config.supportedTimezones:["Asia/Kolkata","UTC","Europe/London","America/New_York"];supportedLocales=Array.isArray(config.supportedLocales)&&config.supportedLocales.length?config.supportedLocales:["en","hi"];populateInvitationPreferences(keepTimezone,keepLocale);paymentRequired=!!config.paymentRequired&&!isAdminUser;extensionEnabled=!!config.extensionEnabled;previewEnabled=config.previewEnabled!==false;customSectionsEnabled=config.customSectionsEnabled!==false;$("preview").disabled=!previewEnabled;$("preview-toggle").disabled=!previewEnabled;if(extensionEnabled)loadWorkspace();$("create-order").textContent=paymentRequired?"Publish invitation · Continue to payment":"Publish invitation (free)";$("policy-links").innerHTML=(policies||[]).map(p=>'<details><summary>'+escapeHtml(p.title)+' · v'+p.version_number+'</summary><pre>'+escapeHtml(p.body_markdown)+'</pre></details>').join("");}catch(e){populateInvitationPreferences(keepTimezone,keepLocale);console.warn("Could not load invitation settings; using built-in supported language and timezone options.",e);}}
+async function loadPolicies(){
+ const keepTimezone=$("timezone")?.value||defaultTimezone,keepLocale=$("invitation-locale")?.value||"en";
+ populateInvitationPreferences(keepTimezone,keepLocale);
+ let config=null,policies=[];
+ // Resolve the signed-in role independently: a policy/config endpoint failure must not
+ // accidentally send an administrator into the paid checkout flow.
+ try{
+  const me=await api("/auth/me");
+  const rawRole=String(me?.role||me?.user?.role||"").toUpperCase().replace(/^ROLE_/,"");
+  isAdminUser=rawRole==="ADMIN"||rawRole==="SUPER_ADMIN";
+ }catch(error){console.warn("Unable to determine account role for publication pricing",error);}
+ try{config=await api("/public/config");}catch(error){console.warn("Unable to load publication settings",error);}
+ try{policies=await api("/public/policies/current")||[];}catch(error){console.warn("Unable to load policy documents",error);}
+ if(config){
+  defaultTimezone=config.defaultTimezone||"Asia/Kolkata";
+  supportedTimezones=Array.isArray(config.supportedTimezones)&&config.supportedTimezones.length?config.supportedTimezones:["Asia/Kolkata","UTC","Europe/London","America/New_York"];
+  supportedLocales=Array.isArray(config.supportedLocales)&&config.supportedLocales.length?config.supportedLocales:["en","hi"];
+  paymentRequired=!!config.paymentRequired&&!isAdminUser;
+  extensionEnabled=!!config.extensionEnabled;
+  previewEnabled=config.previewEnabled!==false;
+  customSectionsEnabled=config.customSectionsEnabled!==false;
+ }
+ populateInvitationPreferences(keepTimezone,keepLocale);
+ $("preview").disabled=!previewEnabled;$("preview-toggle").disabled=!previewEnabled;
+ if(extensionEnabled)loadWorkspace();
+ $("create-order").textContent=paymentRequired?"Publish invitation · Continue to payment":"Publish invitation (free)";
+ $("policy-links").innerHTML=policies.map(item=>'<details><summary>'+escapeHtml(item.title)+' · v'+item.version_number+'</summary><pre>'+escapeHtml(item.body_markdown)+'</pre></details>').join("");
+}
 const originalShowWorkspace=showWorkspace;
 showWorkspace=()=>{originalShowWorkspace();loadPolicies();};
 async function startExtension(invitationId){
