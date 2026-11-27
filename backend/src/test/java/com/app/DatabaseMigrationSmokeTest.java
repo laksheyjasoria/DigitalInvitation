@@ -311,7 +311,7 @@ class DatabaseMigrationSmokeTest {
         String definition = "<template id=\"TEMP9999999\" name=\"CI Package\" version=\"1.0.0\" schemaVersion=\"1\">" +
                 "<sections><section key=\"hero\" label=\"Invitation\"><field key=\"headline\" label=\"Heading\" type=\"text\" required=\"true\"/></section></sections></template>";
         String preview = "<preview><hero><headline>Sample invitation</headline></hero></preview>";
-        byte[] html = "<html><body><main>CI package</main></body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] html = "<html><body><main>CI package</main><img data-location-qr alt=\"Event location QR\"></body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] css = "body{margin:0}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] js = "window.templateReady=true;".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         MockMultipartFile[] files = {
