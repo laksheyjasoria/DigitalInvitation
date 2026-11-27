@@ -35,10 +35,17 @@ public class InvitationQrController {
   try{parsed=java.net.URI.create(locationUrl);}catch(Exception ex){throw new ResponseStatusException(HttpStatus.GONE,"Event location URL is invalid");}
   if(!"https".equalsIgnoreCase(parsed.getScheme())||parsed.getHost()==null)
    throw new ResponseStatusException(HttpStatus.GONE,"Event location URL is invalid");
+  byte[] png=createPng(locationUrl);
+  return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).cacheControl(CacheControl.noCache()).body(png);
+ }
+
+ static String dataUrl(String locationUrl)throws Exception{return "data:image/png;base64,"+java.util.Base64.getEncoder().encodeToString(createPng(locationUrl));}
+
+ private static byte[] createPng(String locationUrl)throws Exception{
   BitMatrix matrix=new MultiFormatWriter().encode(locationUrl,BarcodeFormat.QR_CODE,420,420,Map.of(EncodeHintType.MARGIN,2));
   BufferedImage image=new BufferedImage(420,420,BufferedImage.TYPE_INT_RGB);
   for(int y=0;y<420;y++)for(int x=0;x<420;x++)image.setRGB(x,y,matrix.get(x,y)?0x202020:0xFFFFFF);
   ByteArrayOutputStream out=new ByteArrayOutputStream();ImageIO.write(image,"PNG",out);
-  return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).cacheControl(CacheControl.noCache()).body(out.toByteArray());
+  return out.toByteArray();
  }
 }
