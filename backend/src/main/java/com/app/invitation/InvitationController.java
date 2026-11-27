@@ -104,7 +104,8 @@ public class InvitationController {
             throw new IllegalArgumentException("Invitation cannot be published in its current state");
         if(inv.get("lastFunctionDate").toString().isBlank())throw new IllegalArgumentException("At least one function date is required");
         int grace;long expirySettingVersion;String agreedDate=inv.get("lastFunctionDate").toString();String agreedTimezone=inv.get("timezone").toString();
-        boolean paymentRequired=settings.getBoolean("invitation.publication.payment-required");
+        boolean administrator=auth!=null&&auth.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_ADMIN")||a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        boolean paymentRequired=settings.getBoolean("invitation.publication.payment-required")&&!administrator;
         java.util.List<String> requiredConsentKeys=new java.util.ArrayList<>();
         java.util.Map<String,String> consentVersions=new java.util.HashMap<>();
         if(!inv.get("orderSnapshot").toString().isBlank()){
