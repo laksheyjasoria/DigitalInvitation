@@ -51,7 +51,7 @@ public class TemplateStudioController {
     }
 
     @GetMapping("/packages/{id}/preview")
-    public ApiResponse<?> preview(@PathVariable UUID id) {
+    public ApiResponse<?> preview(@PathVariable("id") UUID id) {
         List<byte[]> rows = jdbc.query("SELECT archive_bytes FROM template_package_stage WHERE id=? AND status IN ('VALIDATED','QUEUED_FOR_RELEASE','RELEASED')", (rs,n) -> rs.getBytes(1), id);
         if(rows.isEmpty()) throw new IllegalArgumentException("Validated staged template package not found");
         return ApiResponse.success(definitionMapper.mapPreview(rows.get(0)));
@@ -163,7 +163,7 @@ public class TemplateStudioController {
 
     @PostMapping("/packages/{id}/publish")
     @Transactional
-    public ApiResponse<?> publish(@PathVariable UUID id, @RequestBody Map<String, Object> body,
+    public ApiResponse<?> publish(@PathVariable("id") UUID id, @RequestBody Map<String, Object> body,
                                   Authentication authentication) throws Exception {
         UUID actor = UUID.fromString(authentication.getName());
         UUID categoryId;
@@ -261,7 +261,7 @@ public class TemplateStudioController {
     }
 
     @PostMapping("/packages/{id}/revalidate")
-    public ApiResponse<?> revalidate(@PathVariable UUID id, Authentication authentication) {
+    public ApiResponse<?> revalidate(@PathVariable("id") UUID id, Authentication authentication) {
         List<byte[]> rows = jdbc.query("SELECT archive_bytes FROM template_package_stage WHERE id=?",
                 (rs, n) -> rs.getBytes(1), id);
         if (rows.isEmpty()) throw new IllegalArgumentException("Staged template package not found");
