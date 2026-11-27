@@ -62,6 +62,36 @@ The adapter defaults to a 300-second upload completion timeout and polls every 1
 
 **Important:** these routes are implemented on the FileServer `feature/master-drive-storage-api` branch. Deploy that branch (or merge its API into the deployed FileServer) before enabling this adapter. The DigitalInvitation adapter must not be enabled until the target FileServer has the Master Drive routes and the configured drive exists. Verify upload, status polling, download/range, delete, auth, concurrency and recovery against the actual deployed instance.
 
+## GitHub template publishing and Docker deployment
+
+Template package publication is an explicit Admin/Super Admin action. Uploading a package only stages it for validation and preview; it does not commit to Git. When GitHub publishing is enabled, the Publish action commits the validated immutable ZIP to the configured release branch. The release workflow verifies the backend, builds and pushes an immutable image to GHCR, and deploys only when the protected deployment gate is enabled.
+
+Configure these backend environment values in the protected runtime environment:
+
+| Variable | Purpose |
+|---|---|
+| APP_GITHUB_TOKEN | Fine-grained token with Contents read/write access to this repository |
+| APP_GITHUB_REPOSITORY | Repository in owner/name form |
+| APP_GITHUB_TEMPLATE_RELEASES_ENABLED | Set true only after the token and release branch configuration are verified |
+| APP_GITHUB_TEMPLATE_RELEASE_BRANCH | Release branch; defaults to template-releases |
+| APP_GITHUB_TEMPLATE_BASE_BRANCH | Application branch merged into the release branch |
+
+The service creates the release branch from the configured base branch on the first publish. Do not put the token in frontend files, invitation content, logs or Git.
+
+For automatic Docker deployment, install a **self-hosted GitHub Actions runner on the Docker host** and register it to this repository with the labels `self-hosted` and `digitalinvitation`. Run the runner as a dedicated non-root account with the minimum Docker access required. The runner must have Docker Engine/Compose access and a persistent checked-out workspace containing this repository.
+
+Set these repository Actions variables only after the host is prepared:
+
+| GitHub Actions variable | Example / purpose |
+|---|---|
+| DI_DEPLOY_ENABLED | `true` to permit deployment; keep false until ready |
+| DI_ENV_FILE_PATH | Absolute path to the protected host .env file |
+| DI_COMPOSE_PROJECT | Stable Docker Compose project name, e.g. `digitalinvitation` |
+
+The workflow deploy job runs only for pushes to `template-releases` when `DI_DEPLOY_ENABLED=true`. It uses the runner's Docker host, checks the candidate backend health, switches the Nginx upstream, runs a smoke check and restores the previous upstream on failure. The previous backend container is retained for rollback. Keep the host .env file outside the Git checkout and restrict its permissions.
+
+**Not completed by repository commits alone:** the runner must be installed on your actual Docker host, protected GitHub variables/secrets must be configured, and a real release/deploy/rollback must be observed before enabling the deployment gate.
+
 ## Payment configuration (deferred)
 
 Payment is intentionally not required in the initial rollout: migration V13 sets `invitation.publication.payment-required=false` and `payment.provider=NONE`. Customers can complete consent and publish without checkout. Razorpay remains disabled by default. Do not set `APP_RAZORPAY_ENABLED=true` or switch the payment-required setting to true until credentials, webhook URL/signature verification and sandbox capture/failure/replay tests are completed. Once enabled, all payment settlement must be provider-verified; do not mark an order paid manually.
