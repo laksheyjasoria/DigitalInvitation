@@ -227,7 +227,7 @@ class DatabaseMigrationSmokeTest {
             if (section.path("repeatable").asBoolean(false)) saved.put("items", java.util.List.of(itemValues));
             sections.add(saved);
         }
-        java.util.Map<String,Object> content = java.util.Map.of("locale", "en", "sections", sections);
+        java.util.Map<String,Object> content = java.util.Map.of("locale", "en", "locationUrl", "https://maps.app.goo.gl/ci-location", "sections", sections);
         String token = jwtService.issue(ownerId.toString(), email, "CUSTOMER", 0);
         var created = mockMvc.perform(post("/api/v1/invitations")
                         .header("Authorization", "Bearer " + token)
