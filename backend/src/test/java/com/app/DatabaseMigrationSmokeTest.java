@@ -435,8 +435,7 @@ class DatabaseMigrationSmokeTest {
                 "('wedding-floral-garden','wedding-royal-heritage','wedding-minimal-modern'," +
                 "'wedding-sunset-romance','birthday-confetti-pop','birthday-golden-hour'," +
                 "'anniversary-ever-after','anniversary-modern-milestone','family-gathering-bloom'," +
-                "'milestone-achievement','other-festival-lights','other-clean-canvas') " +
-                ",
+                "'milestone-achievement','other-festival-lights','other-clean-canvas')",
                 Integer.class);
         assertTrue(templateCount != null && templateCount == 12,
                 "All twelve original sample definitions should remain available for admin review");
@@ -445,7 +444,7 @@ class DatabaseMigrationSmokeTest {
         Integer archivedCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template WHERE status='ARCHIVED'", Integer.class);
         assertEquals(1, publishedCount, "Only the launch template should be customer-visible");
-        assertEquals(11, archivedCount, "All old demo designs should be archived");
+        assertEquals(17, archivedCount, "All old demo and legacy starter designs should be archived");
 
         Integer styledCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template t " +
