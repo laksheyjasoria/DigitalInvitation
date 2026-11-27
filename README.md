@@ -1,6 +1,6 @@
 # DigitalInvitation
 
-A configurable digital invitation platform for weddings, birthdays, anniversaries, family celebrations, milestones and other occasions. Customers can select a design, customize optional sections, preview, accept the required declarations, publish a unique URL and QR code, and manage invitation validity.
+A configurable digital invitation platform for weddings, birthdays, anniversaries, family celebrations, milestones and other occasions. Customers can select a design, customize optional sections, preview, accept the required declarations, publish a unique URL and QR code, and manage invitation validity. The QR code encodes the event's HTTPS map/location URL; the invitation URL remains a separate shareable link. Customer photo uploads are switched off while the existing backend media APIs and storage adapter are retained for a future enablement.
 
 ## Project status
 
@@ -194,6 +194,7 @@ Payment is intentionally disabled in the initial rollout. Configure the provider
 
 1. **Configurable lifecycle:** grace period, timezone, pricing, media quotas and feature flags are runtime settings, not hardcoded business rules.
 2. **Private by default:** drafts, account data, orders and media are owner-scoped. Only explicitly published snapshots and public media are available by link.
+7. **Location QR:** the published QR encodes the event location URL, never the invitation page URL. The customer photo-upload UI is disabled by default; backend media capabilities are retained.
 3. **Inclusive templates:** templates are not tied to a particular religion. Optional sections can be hidden, renamed, reordered or extended.
 4. **Immutable publication:** a publication captures the selected template design and content snapshot. Changes require an explicit new publication.
 5. **Explicit consent:** declarations are versioned and accepted before publishing.
