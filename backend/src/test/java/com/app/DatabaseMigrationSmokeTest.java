@@ -196,7 +196,7 @@ class DatabaseMigrationSmokeTest {
                 ownerId, email, "not-used");
         java.util.UUID templateVersionId = jdbc.queryForObject(
                 "SELECT v.id FROM invitation_template t JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
-                "WHERE t.template_key='wedding-minimal-modern' AND t.status='PUBLISHED'",
+                "WHERE t.template_key='wedding-floral-garden' AND t.status='PUBLISHED'",
                 java.util.UUID.class);
         String definitionText = jdbc.queryForObject(
                 "SELECT definition::text FROM invitation_template_version WHERE id=?", String.class, templateVersionId);
@@ -429,17 +429,23 @@ class DatabaseMigrationSmokeTest {
                 "All core platform tables should exist after Flyway migration");
     }
     @Test
-    void sampleInvitationTemplatesAreSeededWithDistinctVisualDesigns() {
+    void launchCataloguePublishesExactlyOneWeddingTemplateAndArchivesDemoDesigns() {
         Integer templateCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template WHERE template_key IN " +
                 "('wedding-floral-garden','wedding-royal-heritage','wedding-minimal-modern'," +
                 "'wedding-sunset-romance','birthday-confetti-pop','birthday-golden-hour'," +
                 "'anniversary-ever-after','anniversary-modern-milestone','family-gathering-bloom'," +
                 "'milestone-achievement','other-festival-lights','other-clean-canvas') " +
-                "AND status='PUBLISHED'",
+                ",
                 Integer.class);
         assertTrue(templateCount != null && templateCount == 12,
-                "All twelve sample invitation templates should be published by Flyway");
+                "All twelve original sample definitions should remain available for admin review");
+        Integer publishedCount = jdbc.queryForObject(
+                "SELECT count(*) FROM invitation_template WHERE status='PUBLISHED'", Integer.class);
+        Integer archivedCount = jdbc.queryForObject(
+                "SELECT count(*) FROM invitation_template WHERE status='ARCHIVED'", Integer.class);
+        assertEquals(1, publishedCount, "Only the launch template should be customer-visible");
+        assertEquals(11, archivedCount, "All old demo designs should be archived");
 
         Integer styledCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template t " +
@@ -455,8 +461,8 @@ class DatabaseMigrationSmokeTest {
                 "JOIN invitation_template_version v ON v.template_id=t.id " +
                 "WHERE t.template_key='wedding-floral-garden' ORDER BY v.version_number LIMIT 1",
                 String.class);
-        assertTrue(styledCount != null && styledCount == 4,
-                "Wedding sample templates should contain a design palette for the public renderer. " +
+        assertTrue(styledCount != null && styledCount == 1,
+                "The sole launch template should contain a design palette for the public renderer. " +
                 "Matching rows=" + styledCount + "; sample definition=" + sampleDefinition);
     }
 
