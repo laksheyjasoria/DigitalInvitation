@@ -37,7 +37,7 @@ See `docs/product/SAMPLE_TEMPLATES.md` for the catalogue and customization model
 - Responsive HTML/CSS/JavaScript frontend
 - FileServer Master Drive adapter using server-side `X-Master-Key`
 - Docker Compose, Nginx and GitHub Actions
-- Razorpay adapter present but disabled until later configuration
+- Razorpay checkout supports sandbox/live modes; sandbox credentials are required for customer payment testing, while ADMIN and SUPER_ADMIN accounts publish free
 
 ## Run in Eclipse IDE (recommended for backend development)
 
@@ -64,12 +64,16 @@ POSTGRES_PASSWORD=digital_invitation_local_only
 APP_JWT_SECRET=replace-this-with-a-random-local-secret-at-least-32-bytes
 APP_PUBLIC_BASE_URL=http://localhost:8088
 APP_REFRESH_COOKIE_SECURE=false
-APP_RAZORPAY_ENABLED=false
+APP_RAZORPAY_ENABLED=true
+APP_RAZORPAY_MODE=test
+APP_RAZORPAY_KEY_ID=rzp_test_... (use your Razorpay test key ID)
+APP_RAZORPAY_KEY_SECRET=your_test_key_secret
+APP_RAZORPAY_WEBHOOK_SECRET=your_test_webhook_secret
 APP_FILESERVER_ENABLED=false
 APP_MAIL_ENABLED=false
 ```
 
-Keep `.env` local. Never commit real credentials.
+Use Razorpay Dashboard Test Mode credentials for all three payment values above. The backend rejects live keys while `APP_RAZORPAY_MODE=test`. Admin and Super Admin accounts bypass checkout and are never charged. Keep `.env` local. Never commit real credentials.
 
 ### 2. Start only the local PostgreSQL database
 
