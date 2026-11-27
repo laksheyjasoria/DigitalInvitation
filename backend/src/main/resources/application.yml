@@ -83,6 +83,8 @@ app:
       email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
       password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
   invitation:
+    media:
+      customer-enabled: ${APP_INVITATION_MEDIA_CUSTOMER_ENABLED:false}
     expiry:
       cron: "0 */15 * * * *"
 
