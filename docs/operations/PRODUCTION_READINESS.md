@@ -32,7 +32,7 @@ This implementation is an integration milestone. Do not accept live customers un
 
 - [x] Implement DigitalInvitation's FileServer Master Drive adapter using the `X-Master-Key` header, configurable root drive ID/name, asynchronous upload completion polling, download and soft-delete routes.
 - [x] Add admin category listing/enablement, template listing/status changes and immutable template version creation APIs with audit events.
-- [x] Retain customer media upload/list/delete/visibility APIs and FileServer integration; customer photo-upload UI and upload actions are disabled by default (re-enable only through the frontend feature flag).
+- [x] Retain customer media upload/list/delete/visibility APIs and FileServer integration; customer photo-upload UI and backend customer media APIs are disabled by default (re-enable through APP_INVITATION_MEDIA_CUSTOMER_ENABLED and the frontend feature flag).
 - [x] Capture and validate an HTTPS event-location URL, save it in the invitation snapshot, and generate a static PNG QR code encoding that location URL (separate from the invitation share URL).
 - [ ] Perform a real browser scan test of the downloaded location QR against Google Maps on Android and iOS.
 - [x] Defer payment requirement by default with migration V13; checkout remains disabled until provider setup and an explicit admin configuration change.
