@@ -113,7 +113,7 @@ public class InvitationController {
                 var snapshot=mapper.readTree(inv.get("orderSnapshot").toString());
                 var policy=snapshot.path("expiryPolicy");
                 if(policy.isMissingNode())throw new IllegalStateException("Order is missing its expiry policy snapshot");
-                paymentRequired=policy.path("paymentRequired").asBoolean(paymentRequired);
+                paymentRequired=administrator?false:policy.path("paymentRequired").asBoolean(paymentRequired);
                 grace=policy.path("graceDays").asInt(-1);
                 expirySettingVersion=policy.path("settingVersion").asLong(-1);
                 String orderDate=policy.path("lastFunctionDate").asText("");
