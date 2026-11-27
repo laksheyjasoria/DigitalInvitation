@@ -192,7 +192,7 @@ class DatabaseMigrationSmokeTest {
     void publishedInvitationRetainsItsExactTemplateVersionAndImmutableSnapshot() throws Exception {
         java.util.UUID ownerId = java.util.UUID.randomUUID();
         String email = "published-snapshot-" + ownerId + "@example.test";
-        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Snapshot Owner','CUSTOMER','ACTIVE')",
+        jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES (?,?,?,'Snapshot Owner','ADMIN','ACTIVE')",
                 ownerId, email, "not-used");
         java.util.UUID templateVersionId = jdbc.queryForObject(
                 "SELECT v.id FROM invitation_template t JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
@@ -228,7 +228,7 @@ class DatabaseMigrationSmokeTest {
             sections.add(saved);
         }
         java.util.Map<String,Object> content = java.util.Map.of("locale", "en", "locationUrl", "https://maps.app.goo.gl/ci-location", "sections", sections);
-        String token = jwtService.issue(ownerId.toString(), email, "CUSTOMER", 0);
+        String token = jwtService.issue(ownerId.toString(), email, "ADMIN", 0);
         var created = mockMvc.perform(post("/api/v1/invitations")
                         .header("Authorization", "Bearer " + token)
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -283,7 +283,8 @@ class DatabaseMigrationSmokeTest {
         mockMvc.perform(get("/api/v1/public/invitations/" + slug))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("Original CI Invitation"))
-                .andExpect(jsonPath("$.data.content.locale").value("en"));
+                .andExpect(jsonPath("$.data.content.locale").value("en"))
+                .andExpect(jsonPath("$.data.locationQrUrl").value("/api/v1/public/invitations/" + slug + "/qr"));
     }
 
     @Test
