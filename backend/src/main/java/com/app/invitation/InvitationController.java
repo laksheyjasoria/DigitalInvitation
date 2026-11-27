@@ -28,6 +28,7 @@ public class InvitationController {
         Integer usableTemplate=jdbc.queryForObject("SELECT count(*) FROM invitation_template_version v JOIN invitation_template t ON t.id=v.template_id WHERE v.id=? AND t.status='PUBLISHED' AND v.version_number=t.current_version",Integer.class,r.templateVersionId());
         if(usableTemplate==null||usableTemplate!=1)throw new IllegalArgumentException("Select a currently published invitation template");
         validateTemplateContent(r.templateVersionId(),r.content()==null?Map.of():r.content());
+        validateLocationUrl(r.content(),false);
         UUID id=UUID.randomUUID();
         try{jdbc.update("INSERT INTO invitation(id,owner_user_id,template_version_id,title,content,last_function_date,timezone) VALUES (?,?,?,?,?::jsonb,?,?)",id,owner,r.templateVersionId(),r.title().trim(),mapper.writeValueAsString(r.content()==null?Map.of():r.content()),r.lastFunctionDate(),tz);}
         catch(Exception e){throw new IllegalArgumentException("Unable to create invitation. Verify the selected template and event date.");}
@@ -50,6 +51,7 @@ public class InvitationController {
         Integer usableTemplate=jdbc.queryForObject("SELECT count(*) FROM invitation_template_version v JOIN invitation_template t ON t.id=v.template_id WHERE v.id=? AND t.status='PUBLISHED' AND v.version_number=t.current_version",Integer.class,requestedTemplate);
         if(!Boolean.TRUE.equals(sameTemplate)&&(usableTemplate==null||usableTemplate!=1))throw new IllegalArgumentException("Select a currently published invitation template");
         validateTemplateContent(requestedTemplate,content==null?Map.of():content);
+        validateLocationUrl(content,false);
         try{int n=jdbc.update("UPDATE invitation SET title=?,content=?::jsonb,template_version_id=?,last_function_date=?,timezone=?,status='DRAFT',updated_at=now(),version=version+1 WHERE id=? AND owner_user_id=? AND (status='DRAFT' OR (status='PENDING_PAYMENT' AND NOT EXISTS (SELECT 1 FROM customer_order o WHERE o.invitation_id=invitation.id AND o.status IN ('CREATED','PAYMENT_PENDING','PAID'))))",title.trim(),mapper.writeValueAsString(content==null?Map.of():content),requestedTemplate,body.get("lastFunctionDate")==null?null:LocalDate.parse(String.valueOf(body.get("lastFunctionDate"))),requestedTimezone,id,owner);if(n==0)throw new IllegalArgumentException("Invitation not found or cannot be edited in its current state");}
         catch(IllegalArgumentException e){throw e;}catch(Exception e){throw new IllegalArgumentException("Invalid invitation content");}
         return ApiResponse.success(Map.of("id",id,"status","DRAFT"));
@@ -95,6 +97,7 @@ public class InvitationController {
         if(rows.isEmpty())throw new IllegalArgumentException("Invitation not found");
         var inv=rows.get(0);
         validateTemplateContent((UUID)inv.get("templateVersionId"),inv.get("content"));
+        validateLocationUrl(inv.get("content"),true);
         if("PUBLISHED".equals(inv.get("status"))&&!inv.get("publicSlug").toString().isBlank())
             return ApiResponse.success(Map.of("slug",inv.get("publicSlug"),"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+inv.get("publicSlug"),"expiresAt",inv.get("expiresAt")));
         if("EXPIRED".equals(inv.get("status"))||"SUSPENDED".equals(inv.get("status"))||"DELETED".equals(inv.get("status")))
@@ -162,6 +165,23 @@ public class InvitationController {
         audit.record(user,"INVITATION_PUBLISHED","INVITATION",id.toString(),"SUCCESS",Map.of("publicationSlug",slug,"expiresAt",expiry.toString(),"graceDays",grace));
         return ApiResponse.success(Map.of("slug",slug,"url",publicBaseUrl.replaceAll("/+$","")+"/i/"+slug,"expiresAt",expiry.toString()));
     }
+
+    private void validateLocationUrl(Object rawContent,boolean required){
+        try{
+            com.fasterxml.jackson.databind.JsonNode content=rawContent instanceof String text?mapper.readTree(text):mapper.valueToTree(rawContent);
+            String value=content.path("locationUrl").asText("").trim();
+            if(value.isBlank()){
+                if(required)throw new IllegalArgumentException("Add the event location Google Maps URL before publishing");
+                return;
+            }
+            java.net.URI uri=java.net.URI.create(value);
+            if(!"https".equalsIgnoreCase(uri.getScheme())||uri.getHost()==null||uri.getHost().isBlank()||uri.getUserInfo()!=null)
+                throw new IllegalArgumentException("Event location URL must be a valid HTTPS link");
+            if(value.length()>2000)throw new IllegalArgumentException("Event location URL is too long");
+        }catch(IllegalArgumentException e){throw e;}
+        catch(Exception e){throw new IllegalArgumentException("Event location URL is invalid");}
+    }
+
     private void validateTemplateContent(UUID templateVersionId,Object rawContent){
         try{
             String definition=jdbc.queryForObject("SELECT definition::text FROM invitation_template_version WHERE id=?",String.class,templateVersionId);
