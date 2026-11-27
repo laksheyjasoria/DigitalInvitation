@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 @Controller
 public class PublicInvitationPageController {
     @GetMapping({"/i/{slug}", "/i/{slug}/"})
-    public String invitationPage(@PathVariable String slug) {
+    public String invitationPage(@PathVariable("slug") String slug) {
         return "forward:/invitation.html";
     }
 }
