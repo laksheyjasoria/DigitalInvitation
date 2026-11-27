@@ -34,7 +34,7 @@ function chooseTemplate(choice){
  $("template-gallery").classList.add("hidden");$("editor-form").classList.remove("hidden");
  $("upload-media").disabled=true;$("media-manager").classList.add("hidden");$("rsvp-management").classList.add("hidden");
  $("published-result").classList.add("hidden");$("save").classList.remove("hidden");$("create-order").classList.remove("hidden");
- previewReviewed=false;previewPendingApproval=false;$("create-order").disabled=true;$("invite-title").value="";$("function-date").value="";$("timezone").value=defaultTimezone;
+ previewReviewed=false;previewPendingApproval=false;$("create-order").disabled=true;$("invite-title").value="";$("function-date").value="";$("location-url").value="";$("timezone").value=defaultTimezone;
  $("invitation-locale").value=supportedLocales[0]||"en";$("consent-panel").classList.add("hidden");
  showTemplateInfo(choice.t);renderSections();$("editor-title").textContent="Personalize "+choice.t.display_name;
  const dialog=$("template-preview-dialog");if(dialog.open)dialog.close();
