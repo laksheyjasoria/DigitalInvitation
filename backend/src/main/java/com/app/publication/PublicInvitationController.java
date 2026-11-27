@@ -24,7 +24,7 @@ public class PublicInvitationController {
     }
 
     @GetMapping("/invitations/{slug}")
-    public org.springframework.http.ResponseEntity<ApiResponse<?>> invitation(@PathVariable String slug) {
+    public org.springframework.http.ResponseEntity<ApiResponse<?>> invitation(@PathVariable("slug") String slug) {
         var rows = jdbc.query(
                 "SELECT p.published_snapshot::text AS published_snapshot,p.expires_at,p.revoked_at,v.package_resource_path " +
                 "FROM invitation_publication p JOIN invitation_template_version v ON v.id=p.template_version_id WHERE p.public_slug=?",
