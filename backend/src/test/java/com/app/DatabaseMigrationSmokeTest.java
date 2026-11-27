@@ -284,7 +284,8 @@ class DatabaseMigrationSmokeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("Original CI Invitation"))
                 .andExpect(jsonPath("$.data.content.locale").value("en"))
-                .andExpect(jsonPath("$.data.locationQrUrl").value("/api/v1/public/invitations/" + slug + "/qr"));
+                .andExpect(jsonPath("$.data.locationQrUrl").value("/api/v1/public/invitations/" + slug + "/qr"))
+                .andExpect(jsonPath("$.data.locationQrDataUrl").value(org.hamcrest.Matchers.startsWith("data:image/png;base64,")));
     }
 
     @Test
