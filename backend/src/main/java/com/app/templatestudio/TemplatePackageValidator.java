@@ -3,10 +3,13 @@ package com.app.templatestudio;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import javax.xml.XMLConstants;
@@ -37,6 +40,7 @@ public class TemplatePackageValidator {
         Set<String> names = new HashSet<>();
         byte[] definition = null;
         byte[] preview = null;
+        byte[] indexHtml = null;
         int count = 0;
         int expanded = 0;
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(archive))) {
@@ -56,6 +60,7 @@ public class TemplatePackageValidator {
                     if (expanded > MAX_EXPANDED_BYTES) throw new IllegalArgumentException("Expanded template package exceeds 25 MB");
                     out.write(buffer, 0, read);
                 }
+                if (name.equals("index.html")) indexHtml = out.toByteArray();
                 if (name.equals("template.xml")) definition = out.toByteArray();
                 if (name.equals("preview.xml")) preview = out.toByteArray();
                 zip.closeEntry();
@@ -67,6 +72,13 @@ public class TemplatePackageValidator {
             Set<String> missing = new HashSet<>(REQUIRED);
             missing.removeAll(names);
             throw new IllegalArgumentException("Template package is missing: " + String.join(", ", missing));
+        }
+        String html = new String(indexHtml, StandardCharsets.UTF_8);
+        Matcher qrSlotMatcher = Pattern.compile("(?is)<img\\\\b(?=[^>]*\\\\bdata-location-qr(?:\\\\s|=|>))[^>]*>").matcher(html);
+        int qrSlotCount = 0;
+        while (qrSlotMatcher.find()) qrSlotCount++;
+        if (qrSlotCount != 1) {
+            throw new IllegalArgumentException("index.html must contain exactly one <img data-location-qr> named QR slot");
         }
         try {
             Document document = parseAndValidateDefinition(definition);
