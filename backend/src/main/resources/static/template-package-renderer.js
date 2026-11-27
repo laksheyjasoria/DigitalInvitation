@@ -28,7 +28,7 @@
     });
 
     const locationUrl = String(content.locationUrl || "").trim();
-    const qrUrl = String(snapshot?.locationQrUrl || "").trim();
+    const qrUrl = String(snapshot?.locationQrDataUrl || snapshot?.locationQrUrl || "").trim();
     document.querySelectorAll("[data-location-qr]").forEach(node => {
       const section = node.closest("[data-location-qr-section]") || node.parentElement;
       if (!locationUrl) { if (section) section.remove(); return; }
