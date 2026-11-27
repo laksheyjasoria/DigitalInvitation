@@ -22,6 +22,7 @@ public class PaymentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
+        if(isAdministrator(auth))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Administrator accounts publish without payment checkout");
         if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment is required but no payment provider is configured. Configure and verify the provider before enabling paid publication.");
         var invitation=jdbc.queryForMap("SELECT id,last_function_date,timezone FROM invitation WHERE id=? AND owner_user_id=? AND status='DRAFT' FOR UPDATE",id,user);
@@ -66,6 +67,7 @@ public class PaymentController {
     @PostMapping("/invitations/{id}/extensions/orders")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> createExtensionOrder(@PathVariable UUID id,Authentication auth){
+        if(isAdministrator(auth))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Administrator accounts are exempt from invitation charges");
         if(!settings.getBoolean("invitation.expiry.extension-enabled"))
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Invitation extensions are not available");
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Invitation extensions require a configured payment provider.");
@@ -125,6 +127,7 @@ public class PaymentController {
         jdbc.update("UPDATE customer_order SET status='PAYMENT_PENDING',updated_at=now() WHERE id=? AND user_id=?",orderId,user);
         return ApiResponse.success(Map.of("provider",provider.name(),"keyId",provider.publicKey(),"providerOrder",result,"reused",false));
     }
+    private boolean isAdministrator(Authentication auth){return auth!=null&&auth.getAuthorities().stream().anyMatch(a->a.getAuthority().equals("ROLE_ADMIN")||a.getAuthority().equals("ROLE_SUPER_ADMIN"));}
     public record VerifyRequest(String providerOrderId,String providerPaymentId,String signature){}
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/payments/{orderId}/verify")
