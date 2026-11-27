@@ -169,15 +169,7 @@ public class InvitationController {
     private void validateLocationUrl(Object rawContent,boolean required){
         try{
             com.fasterxml.jackson.databind.JsonNode content=rawContent instanceof String text?mapper.readTree(text):mapper.valueToTree(rawContent);
-            String value=content.path("locationUrl").asText("").trim();
-            if(value.isBlank()){
-                if(required)throw new IllegalArgumentException("Add the event location Google Maps URL before publishing");
-                return;
-            }
-            java.net.URI uri=java.net.URI.create(value);
-            if(!"https".equalsIgnoreCase(uri.getScheme())||uri.getHost()==null||uri.getHost().isBlank()||uri.getUserInfo()!=null)
-                throw new IllegalArgumentException("Event location URL must be a valid HTTPS link");
-            if(value.length()>2000)throw new IllegalArgumentException("Event location URL is too long");
+            com.app.invitation.InvitationLocationUrl.validate(content.path("locationUrl").asText(""),required);
         }catch(IllegalArgumentException e){throw e;}
         catch(Exception e){throw new IllegalArgumentException("Event location URL is invalid");}
     }
