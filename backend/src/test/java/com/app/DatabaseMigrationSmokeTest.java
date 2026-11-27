@@ -255,6 +255,15 @@ class DatabaseMigrationSmokeTest {
                         .content(objectMapper.writeValueAsString(consents)))
                 .andExpect(status().isOk());
 
+        // Normal customer accounts must pay; the same draft can still be published free by an admin.
+        jdbc.update("UPDATE app_user SET role='CUSTOMER' WHERE id=?", ownerId);
+        String customerToken = jwtService.issue(ownerId.toString(), email, "CUSTOMER", 0);
+        mockMvc.perform(post("/api/v1/invitations/" + invitationId + "/publish")
+                        .header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isBadRequest());
+        jdbc.update("UPDATE app_user SET role='ADMIN' WHERE id=?", ownerId);
+        token = jwtService.issue(ownerId.toString(), email, "ADMIN", 0);
+
         var published = mockMvc.perform(post("/api/v1/invitations/" + invitationId + "/publish")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
