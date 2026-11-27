@@ -449,7 +449,7 @@ class DatabaseMigrationSmokeTest {
         Integer styledCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template t " +
                 "JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
-                "WHERE t.template_key LIKE 'wedding-%' " +
+                "WHERE t.template_key LIKE 'wedding-%' AND t.status='PUBLISHED' " +
                 "AND jsonb_typeof(v.definition)='object' " +
                 "AND jsonb_typeof(v.definition->'design')='object' " +
                 "AND jsonb_typeof(v.definition->'design'->'palette')='object' " +
