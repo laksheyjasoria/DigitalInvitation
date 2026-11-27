@@ -10,6 +10,18 @@ class RazorpayPaymentProviderTest {
             new RazorpayPaymentProvider("rzp_test_key", "test-secret", "webhook-secret");
 
     @Test
+    void sandboxModeRejectsLiveCredentials() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> new RazorpayPaymentProvider("rzp_live_key", "secret", "webhook", "test"));
+    }
+
+    @Test
+    void liveModeRejectsSandboxCredentials() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> new RazorpayPaymentProvider("rzp_test_key", "secret", "webhook", "live"));
+    }
+
+    @Test
     void verifiesCheckoutSignatureAndRejectsTampering() {
         assertTrue(provider.verifyCheckoutSignature(
                 "order_123", "pay_123",
