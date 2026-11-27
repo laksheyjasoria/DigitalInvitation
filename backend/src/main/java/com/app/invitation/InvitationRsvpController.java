@@ -37,13 +37,13 @@ public class InvitationRsvpController {
   return ApiResponse.success(Map.of("rsvpId",id,"received",true));
  }
  @GetMapping("/api/v1/invitations/{id}/rsvps")
- public ApiResponse<?> list(@PathVariable UUID id,Authentication auth){
+ public ApiResponse<?> list(@PathVariable("id") UUID id,Authentication auth){
   jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=?",UUID.class,id,UUID.fromString(auth.getName()));
   return ApiResponse.success(jdbc.queryForList("SELECT id,guest_name,guest_email,attendance,guest_count,message,created_at FROM invitation_rsvp WHERE invitation_id=? ORDER BY created_at DESC",id));
  }
 
  @GetMapping(value="/api/v1/invitations/{id}/rsvps/export",produces="text/csv")
- public org.springframework.http.ResponseEntity<byte[]> export(@PathVariable UUID id,Authentication auth){
+ public org.springframework.http.ResponseEntity<byte[]> export(@PathVariable("id") UUID id,Authentication auth){
   jdbc.queryForObject("SELECT id FROM invitation WHERE id=? AND owner_user_id=?",UUID.class,id,UUID.fromString(auth.getName()));
   var rows=jdbc.queryForList("SELECT guest_name,guest_email,attendance,guest_count,message,created_at FROM invitation_rsvp WHERE invitation_id=? ORDER BY created_at DESC",id);
   StringBuilder csv=new StringBuilder("Guest name,Guest email,Attendance,Guest count,Message,Submitted at\r\n");
