@@ -43,6 +43,8 @@ public class PublicInvitationController {
             ObjectNode snapshot = (ObjectNode) mapper.readTree(String.valueOf(row.get("snapshot")));
             snapshot.put("publicSlug", slug);
             snapshot.put("locationQrUrl", "/api/v1/public/invitations/" + slug + "/qr");
+            String locationUrl=snapshot.path("content").path("locationUrl").asText("");
+            if(!locationUrl.isBlank())snapshot.put("locationQrDataUrl", InvitationQrController.dataUrl(locationUrl));
             String packagePath = (String) row.get("packagePath");
             if (packagePath != null) snapshot.set("templatePackagePreview", mapper.valueToTree(packages.previewFiles(packagePath)));
             return org.springframework.http.ResponseEntity.ok()
