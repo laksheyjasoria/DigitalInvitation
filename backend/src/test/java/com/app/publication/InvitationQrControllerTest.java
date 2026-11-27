@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
-import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 import java.io.ByteArrayInputStream;
 import java.util.List;
@@ -29,8 +29,10 @@ class InvitationQrControllerTest {
 
         var response = new InvitationQrController(jdbc).qr("public-slug");
         var image = ImageIO.read(new ByteArrayInputStream(response.getBody()));
+        int width = image.getWidth(), height = image.getHeight();
+        int[] pixels = image.getRGB(0, 0, width, height, null, 0, width);
         String decoded = new MultiFormatReader().decode(
-                new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(image)))).getText();
+                new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(width, height, pixels)))).getText();
 
         assertEquals(location, decoded);
     }
