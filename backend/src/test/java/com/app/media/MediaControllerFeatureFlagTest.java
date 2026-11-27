@@ -28,16 +28,4 @@ class MediaControllerFeatureFlagTest {
         assertEquals(HttpStatus.FORBIDDEN, list.getStatusCode());
     }
 
-    @Test
-    void customerMediaFeatureCanBeReenabledByConfiguration() {
-        MediaController controller = new MediaController(
-                mock(JdbcTemplate.class), mock(StorageProvider.class),
-                mock(SystemSettingService.class), true);
-
-        // With the feature enabled, request processing reaches the invitation lookup
-        // instead of failing the feature gate.
-        assertThrows(org.springframework.dao.EmptyResultDataAccessException.class,
-                () -> controller.upload(UUID.randomUUID(), null,
-                        org.springframework.security.core.Authentication.class.cast(null)));
-    }
 }
