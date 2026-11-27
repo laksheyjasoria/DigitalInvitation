@@ -31,6 +31,10 @@ class InvitationQrControllerTest {
         var image = ImageIO.read(new ByteArrayInputStream(response.getBody()));
         int width = image.getWidth(), height = image.getHeight();
         int[] pixels = image.getRGB(0, 0, width, height, null, 0, width);
+        assertEquals(0, image.getRGB(0, 0) >>> 24, "QR quiet-zone background must be transparent");
+        for (int i = 0; i < pixels.length; i++) {
+            pixels[i] = (pixels[i] >>> 24) == 0 ? 0xFFFFFFFF : (0xFF000000 | (pixels[i] & 0x00FFFFFF));
+        }
         String decoded = new MultiFormatReader().decode(
                 new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(width, height, pixels)))).getText();
 
