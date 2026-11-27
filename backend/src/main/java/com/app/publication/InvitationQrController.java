@@ -42,9 +42,9 @@ public class InvitationQrController {
  static String dataUrl(String locationUrl)throws Exception{return "data:image/png;base64,"+java.util.Base64.getEncoder().encodeToString(createPng(locationUrl));}
 
  private static byte[] createPng(String locationUrl)throws Exception{
-  BitMatrix matrix=new MultiFormatWriter().encode(locationUrl,BarcodeFormat.QR_CODE,420,420,Map.of(EncodeHintType.MARGIN,2));
-  BufferedImage image=new BufferedImage(420,420,BufferedImage.TYPE_INT_RGB);
-  for(int y=0;y<420;y++)for(int x=0;x<420;x++)image.setRGB(x,y,matrix.get(x,y)?0x202020:0xFFFFFF);
+  BitMatrix matrix=new MultiFormatWriter().encode(locationUrl,BarcodeFormat.QR_CODE,420,420,Map.of(EncodeHintType.MARGIN,4));
+  BufferedImage image=new BufferedImage(420,420,BufferedImage.TYPE_INT_ARGB);
+  for(int y=0;y<420;y++)for(int x=0;x<420;x++)image.setRGB(x,y,matrix.get(x,y)?0xFF202020:0x00000000);
   ByteArrayOutputStream out=new ByteArrayOutputStream();ImageIO.write(image,"PNG",out);
   return out.toByteArray();
  }
