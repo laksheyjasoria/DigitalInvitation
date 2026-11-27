@@ -27,6 +27,23 @@
       if (!section || section.enabled === false) node.remove();
     });
 
+    const locationUrl = String(content.locationUrl || "").trim();
+    const qrUrl = String(snapshot?.locationQrUrl || "").trim();
+    document.querySelectorAll("[data-location-qr]").forEach(node => {
+      const section = node.closest("[data-location-qr-section]") || node.parentElement;
+      if (!locationUrl || !qrUrl) { if (section) section.remove(); return; }
+      if (node.tagName === "IMG") {
+        node.setAttribute("src", qrUrl);
+        node.setAttribute("alt", "QR code to open the event location");
+      } else {
+        node.setAttribute("href", qrUrl);
+      }
+    });
+    document.querySelectorAll("[data-location-url]").forEach(node => {
+      if (!locationUrl) { node.remove(); return; }
+      node.setAttribute("href", locationUrl);
+    });
+
     document.querySelectorAll("[data-repeat]").forEach(container => {
       const sectionKey = container.dataset.repeat;
       const section = sectionByKey(sectionKey);
