@@ -22,6 +22,12 @@ class TemplatePackageValidatorTest {
     }
 
     @Test
+    void rejectsTemplateWithoutNamedLocationQrSlot() {
+        byte[] archive = packageZip(definition(), preview(), false, "<!doctype html><html><body>Preview</body></html>");
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(archive));
+    }
+
+    @Test
     void rejectsUnsafeTemplatePackageVersion() {
         String unsafe = definition().replace("version=\"1.0.0\"", "version=\"../latest\"");
         assertThrows(IllegalArgumentException.class,
@@ -63,9 +69,13 @@ class TemplatePackageValidatorTest {
     }
 
     private byte[] packageZip(String xml, String preview, boolean traversal) {
+        return packageZip(xml, preview, traversal, "<!doctype html><html><body><img data-location-qr alt=\"Event location QR\"></body></html>");
+    }
+
+    private byte[] packageZip(String xml, String preview, boolean traversal, String html) {
         try (ByteArrayOutputStream bytes = new ByteArrayOutputStream();
              ZipOutputStream out = new ZipOutputStream(bytes)) {
-            add(out, "index.html", "<!doctype html><html><body>Preview</body></html>");
+            add(out, "index.html", html);
             add(out, "styles.css", "body{margin:0}");
             add(out, "script.js", "void 0;");
             add(out, "template.xml", xml);
