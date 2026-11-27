@@ -20,7 +20,7 @@ public class PaymentController {
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/orders")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<?> createOrder(@PathVariable UUID id,Authentication auth){
+    public ApiResponse<?> createOrder(@PathVariable("id") UUID id,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
         if(isAdministrator(auth))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Administrator accounts publish without payment checkout");
         if(!settings.getBoolean("invitation.publication.payment-required"))throw new IllegalArgumentException("Payment is not required for this invitation configuration");
@@ -66,7 +66,7 @@ public class PaymentController {
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/invitations/{id}/extensions/orders")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<?> createExtensionOrder(@PathVariable UUID id,Authentication auth){
+    public ApiResponse<?> createExtensionOrder(@PathVariable("id") UUID id,Authentication auth){
         if(isAdministrator(auth))throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Administrator accounts are exempt from invitation charges");
         if(!settings.getBoolean("invitation.expiry.extension-enabled"))
             throw new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Invitation extensions are not available");
@@ -94,7 +94,7 @@ public class PaymentController {
     }
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/payments/{orderId}/cancel")
-    public ApiResponse<?> cancelOrder(@PathVariable UUID orderId,Authentication auth){
+    public ApiResponse<?> cancelOrder(@PathVariable("orderId") UUID orderId,Authentication auth){
         UUID user=UUID.fromString(auth.getName());
         var rows=jdbc.query("SELECT invitation_id,order_type FROM customer_order WHERE id=? AND user_id=? AND status IN ('CREATED','PAYMENT_PENDING') AND NOT EXISTS (SELECT 1 FROM payment_transaction p WHERE p.order_id=customer_order.id) FOR UPDATE",
             (rs,n)->Map.of("invitationId",rs.getObject("invitation_id",UUID.class),"orderType",rs.getString("order_type")),orderId,user);
@@ -106,7 +106,7 @@ public class PaymentController {
     }
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/payments/{orderId}/checkout")
-    public ApiResponse<?> checkout(@PathVariable UUID orderId,Authentication auth){
+    public ApiResponse<?> checkout(@PathVariable("orderId") UUID orderId,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
         UUID user=UUID.fromString(auth.getName());
         var rows=jdbc.query("SELECT o.id,o.amount_minor,o.currency,o.order_number,o.status FROM customer_order o WHERE o.id=? AND o.user_id=? AND o.status IN ('CREATED','PAYMENT_PENDING') FOR UPDATE",
@@ -131,7 +131,7 @@ public class PaymentController {
     public record VerifyRequest(String providerOrderId,String providerPaymentId,String signature){}
     @org.springframework.transaction.annotation.Transactional
     @PostMapping("/payments/{orderId}/verify")
-    public ApiResponse<?> verify(@PathVariable UUID orderId,@RequestBody VerifyRequest r,Authentication auth){
+    public ApiResponse<?> verify(@PathVariable("orderId") UUID orderId,@RequestBody VerifyRequest r,Authentication auth){
         if(provider==null)throw new org.springframework.web.server.ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Payment provider is not configured");
         var order=jdbc.query("SELECT amount_minor,currency,status FROM customer_order WHERE id=? AND user_id=?",
             (rs,n)->Map.of("amount",rs.getLong("amount_minor"),"currency",rs.getString("currency"),"status",rs.getString("status")),orderId,UUID.fromString(auth.getName()));
