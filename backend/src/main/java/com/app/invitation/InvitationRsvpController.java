@@ -25,7 +25,7 @@ public class InvitationRsvpController {
   @jakarta.validation.constraints.Size(max=1000)String message){}
  @PostMapping("/api/v1/public/invitations/{slug}/rsvp")
  @ResponseStatus(HttpStatus.CREATED)
- public ApiResponse<?> submit(@PathVariable String slug,@Valid @RequestBody RsvpRequest request,jakarta.servlet.http.HttpServletRequest httpRequest){
+ public ApiResponse<?> submit(@PathVariable("slug") String slug,@Valid @RequestBody RsvpRequest request,jakarta.servlet.http.HttpServletRequest httpRequest){
   if(!settings.getBoolean("invitation.rsvp.enabled"))throw new ResponseStatusException(HttpStatus.NOT_FOUND,"RSVP is not enabled");
   if(!java.util.Set.of("ATTENDING","NOT_ATTENDING","MAYBE").contains(request.attendance()))throw new IllegalArgumentException("Invalid RSVP response");
   var rows=jdbc.query("SELECT p.id,p.invitation_id FROM invitation_publication p WHERE p.public_slug=? AND p.revoked_at IS NULL AND p.expires_at>now()",
