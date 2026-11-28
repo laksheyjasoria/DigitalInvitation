@@ -450,7 +450,7 @@ class DatabaseMigrationSmokeTest {
         String html = String.valueOf(previewFiles.get("html"));
         assertTrue(html.contains("data-di-behavior=\"wedding-envelope\""));
         assertTrue(html.contains("data-location-qr"));
-        assertTrue(String.valueOf(previewFiles.get("css")).isNotBlank());
+        assertTrue(!String.valueOf(previewFiles.get("css")).isBlank());
         @SuppressWarnings("unchecked")
         var sample = (java.util.Map<String, Object>) preview.get("sampleContent");
         assertTrue(sample.containsKey("sections"));
