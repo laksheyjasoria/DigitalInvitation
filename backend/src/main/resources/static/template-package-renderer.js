@@ -207,7 +207,8 @@
     }
     if (snapshot?.title) document.title = snapshot.title;
   }
-\n  function renderIntoFrame(frame, preview, snapshot) {
+
+  function renderIntoFrame(frame, preview, snapshot) {
     if (!frame) throw new Error("Template preview frame is missing.");
     frame.setAttribute("sandbox", "allow-scripts");
     frame.srcdoc = buildSrcdoc(preview, snapshot);
