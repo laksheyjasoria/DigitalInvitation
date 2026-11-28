@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Platform administration</title><link rel="stylesheet" href="/app.css"></head>
+<body>
+<header class="top"><a class="brand" href="/">D <span>digital invitation · admin</span></a><nav><a href="/template-studio.html">Template Studio</a> <a href="/app.html">Customer workspace</a></nav></header>
+<main class="shell">
+ <div class="welcome"><div><p class="eyebrow">PLATFORM CONTROL</p><h1>Administration.</h1><p>Manage settings, customers, categories, templates and legal documents.</p></div><button id="refresh" class="secondary">Refresh</button></div>
+ <div id="admin-message" class="muted" role="status" aria-live="polite"></div>
+ <section class="panel"><h2>System settings</h2><p class="muted">Customer invitations require payment through the configured gateway. Use Razorpay test credentials for sandbox testing. ADMIN and SUPER_ADMIN accounts can create and publish invitations without charges.</p><div id="settings"></div></section>
+ <section class="panel" id="admin-invite-section"><h2>Invite administrator or support</h2><p class="muted">Only the Super Admin can create single-use 24-hour invitations. The invitee chooses their own password.</p><form id="admin-invite-form" class="two"><label>Email<input name="email" type="email" required maxlength="320"></label><label>Role<select name="role"><option value="ADMIN">Administrator</option><option value="SUPPORT">Support (read-only)</option></select></label><button class="primary" type="submit">Create invitation</button></form><p id="admin-invite-result" class="muted" role="status"></p><h3>Recent invitations</h3><div id="admin-invites"></div></section>
+ <section class="panel"><h2>Customers</h2><div id="users"></div></section>
+ <section class="panel"><h2>Recent orders</h2><div id="orders"></div></section><section class="panel"><h2>Account email delivery</h2><p class="muted">Only delivery metadata is shown here; verification and reset tokens are never exposed.</p><div id="email-outbox"></div></section>
+ <section class="panel"><h2>Audit trail</h2><div id="audit"></div></section>
+ <section class="panel"><h2>Event categories</h2><div id="categories"></div></section>
+ <section class="panel"><h2>Create event category</h2><form id="category-form" class="two"><label>Key<input name="key" placeholder="BABY_SHOWER" required></label><label>Display name<input name="name" required maxlength="120"></label><label>Description<input name="description"></label><label>Sort order<input name="sortOrder" type="number" value="50"></label><button class="primary">Create category</button></form></section>
+ <section class="panel"><h2>Template library</h2><p class="muted">View and archive catalogue templates. Upload and publish every new template or version through Template Studio; packages are versioned and existing invitations keep their original version.</p><div id="templates"></div></section>
+ <section class="panel"><h2>Publish legal policy version</h2><form id="policy-form"><label>Policy type<select id="policy-type"><option>TERMS</option><option>PRIVACY</option></select></label><label>Title<input id="policy-title" required></label><label>Full policy text (Markdown)<textarea id="policy-body" rows="14" required></textarea></label><button class="primary">Publish new version</button></form></section>
+</main>
+<footer>All configuration and policy changes should be reviewed and audited. Legal drafts require qualified jurisdiction-specific review.</footer>
+<script src="/admin.js" defer></script>
+</body></html>

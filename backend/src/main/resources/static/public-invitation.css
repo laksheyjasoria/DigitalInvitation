@@ -1,0 +1,89 @@
+/* Public invitations are standalone guest-facing pages, not dashboard previews. */
+html,body{width:100%;min-height:100%;margin:0}
+body.invitation-page{min-height:100vh;background:var(--invitation-background,#f8f6f0);overflow-x:hidden}
+body.invitation-page>.top,body.invitation-page>footer{display:none!important}
+body.invitation-page>.shell{width:100%;max-width:none;margin:0;padding:0}
+body.invitation-page #invitation{display:block;width:100%;max-width:none;min-height:100vh;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;text-align:initial}
+body.invitation-page #invitation-render{width:100%;min-height:100vh;margin:0;padding:0}
+body.invitation-page #invitation-render>.di-invitation{width:100%;min-height:100vh;margin:0;padding:clamp(12px,2.5vw,32px);border-radius:0;box-shadow:none}
+body.invitation-page #invitation-render>.di-invitation .di-frame,
+body.invitation-page #invitation-render>.di-invitation .di-content{min-height:calc(100vh - 2 * clamp(12px,2.5vw,32px))}
+body.invitation-page #rsvp-area{width:min(760px,calc(100% - 32px));margin:24px auto 56px}
+body.invitation-page #rsvp-area .section-card{background:var(--invitation-surface,#fffdf8);border:1px solid color-mix(in srgb,var(--invitation-accent,#747a58) 35%,transparent);padding:clamp(18px,4vw,32px)}
+body.invitation-page #loading,body.invitation-page #expired,body.invitation-page #not-found{width:min(560px,calc(100% - 32px));margin:12vh auto;padding:32px;border:1px solid var(--line);background:var(--white)}
+@media(max-width:640px){
+ body.invitation-page #invitation-render>.di-invitation{padding:10px}
+ body.invitation-page #invitation-render>.di-invitation .di-frame,
+ body.invitation-page #invitation-render>.di-invitation .di-content{min-height:calc(100vh - 20px)}
+ body.invitation-page #rsvp-area{width:calc(100% - 20px);margin:18px auto 36px}
+}
+
+/* Template package is rendered directly in this document, without an iframe. */
+body.invitation-page #invitation-render{display:block;min-height:100vh;width:100%;}
+body.invitation-page #invitation-render>*{max-width:100%;}
+
+
+/* Flatten the invitation artwork itself: it must be the page, not a card inside the page. */
+body.invitation-page,
+html:has(body.invitation-page) {
+  width:100%;
+  min-height:100%;
+  margin:0;
+}
+body.invitation-page>.shell,
+body.invitation-page #invitation.panel,
+body.invitation-page #invitation-render {
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  background:transparent;
+}
+body.invitation-page #invitation-render>.di-invitation {
+  display:block;
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  outline:0;
+  box-shadow:none;
+  background:var(--di-bg,transparent);
+  overflow:visible;
+}
+body.invitation-page #invitation-render>.di-invitation>.di-frame {
+  width:100%;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+body.invitation-page #invitation-render>.di-invitation>.di-frame>.di-content {
+  width:100%;
+  min-height:100vh;
+  margin:0;
+  padding:clamp(18px,4vw,42px);
+  border:0;
+  border-radius:0!important;
+  box-shadow:none;
+  background:transparent;
+  overflow:visible;
+}
+body.invitation-page #invitation-render>.di-invitation .di-hero,
+body.invitation-page #invitation-render>.di-invitation .di-section {
+  max-width:min(100%,1100px);
+}
+@media(max-width:640px) {
+  body.invitation-page #invitation-render>.di-invitation>.di-frame>.di-content {
+    padding:14px;
+  }
+}

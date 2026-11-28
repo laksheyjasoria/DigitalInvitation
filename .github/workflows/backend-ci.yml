@@ -1,21 +1,112 @@
-name: Backend CI
+name: Platform CI
+
+concurrency:
+  group: platform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
-    paths: ["backend/**",".github/workflows/backend-ci.yml"]
+    branches: ["feature/platform-implementation"]
+    paths: ["backend/**","frontend/**","docker-compose.yml","docker-compose.eclipse.yml",".github/workflows/backend-ci.yml",".github/workflows/docker-release.yml","deploy/**","scripts/**",".env.example"]
   pull_request:
-    paths: ["backend/**",".github/workflows/backend-ci.yml"]
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-compose.yml"
+      - "docker-compose.eclipse.yml"
+      - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/docker-release.yml"
+      - "deploy/**"
+      - "scripts/**"
+      - ".env.example"
+
 permissions:
   contents: read
+
 jobs:
-  test:
+  verify:
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: digital_invitation_ci
+          POSTGRES_USER: di_ci
+          POSTGRES_PASSWORD: di_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U di_ci -d digital_invitation_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Verify
+          cache-dependency-path: backend/pom.xml
+      - name: Check frontend JavaScript syntax
+        run: |
+          node --check frontend/app.js
+          node --check frontend/admin.js
+          node --check backend/src/main/resources/static/admin.js
+          node --check frontend/invitation.js
+          node --check frontend/invitation-renderer.js
+          node --check frontend/template-preview-frame.js
+          node --check frontend/template-studio.js
+          node --check frontend/template-package-renderer.js
+          node --check frontend/admin-invite.js
+          node --check backend/src/main/resources/static/app.js
+          node --check backend/src/main/resources/static/invitation.js
+          node --check backend/src/main/resources/static/invitation-renderer.js
+          node --check backend/src/main/resources/static/template-studio.js
+          node --check backend/src/main/resources/static/template-package-renderer.js
+          cmp frontend/app.html backend/src/main/resources/static/app.html
+          cmp frontend/app.js backend/src/main/resources/static/app.js
+          cmp frontend/app.css backend/src/main/resources/static/app.css
+          cmp frontend/admin.html backend/src/main/resources/static/admin.html
+          cmp frontend/admin.js backend/src/main/resources/static/admin.js
+          cmp frontend/invitation.html backend/src/main/resources/static/invitation.html
+          cmp frontend/invitation.js backend/src/main/resources/static/invitation.js
+          cmp frontend/invitation-renderer.js backend/src/main/resources/static/invitation-renderer.js
+          cmp frontend/template-preview-frame.html backend/src/main/resources/static/template-preview-frame.html
+          cmp frontend/template-preview-frame.js backend/src/main/resources/static/template-preview-frame.js
+          cmp frontend/template-studio.html backend/src/main/resources/static/template-studio.html
+          cmp frontend/template-studio.js backend/src/main/resources/static/template-studio.js
+          cmp frontend/template-package-renderer.js backend/src/main/resources/static/template-package-renderer.js
+          cmp frontend/admin-invite.html backend/src/main/resources/static/admin-invite.html
+          cmp frontend/admin-invite.js backend/src/main/resources/static/admin-invite.js
+          node --check frontend/verify.js
+          node --check frontend/forgot.js
+          node --check frontend/reset.js
+          node --check frontend/dev-server.js
+      - name: Verify template package renderer ordering and isolation
+        run: node scripts/test-template-package-renderer.js
+      - name: Verify backend and PostgreSQL migrations
         working-directory: backend
         run: mvn --batch-mode verify
+      - name: Validate Nginx frontend configuration
+        run: docker run --rm --add-host=digital-invitation-backend-blue:127.0.0.1 -v "$PWD/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro" -v "$PWD/deploy/nginx/upstream.conf:/etc/nginx/conf.d/upstream.conf:ro" nginx:alpine nginx -t
+      - name: Validate deployment script syntax
+        run: |
+          bash -n scripts/deploy-blue-green.sh
+          bash -n scripts/test-deploy-blue-green.sh
+      - name: Test blue-green switch and rollback
+        run: bash scripts/test-deploy-blue-green.sh
+      - name: Validate Docker release workflow YAML
+        run: ruby -e 'require "yaml"; YAML.load_file(".github/workflows/docker-release.yml")'
+      - name: Build backend container image without pushing
+        run: docker build --tag digitalinvitation-ci:${{ github.sha }} ./backend
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.eclipse.yml config --quiet

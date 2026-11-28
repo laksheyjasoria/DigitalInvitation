@@ -1,0 +1,103 @@
+name: Docker image release
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Immutable image tag to build (for example v1.2.0)
+        required: true
+        type: string
+  push:
+    branches:
+      - "template-releases"
+    tags:
+      - "v*"
+    paths:
+      - "backend/src/main/resources/templates/packages/**"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: digital_invitation_ci
+          POSTGRES_USER: di_ci
+          POSTGRES_PASSWORD: di_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U di_ci -d digital_invitation_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - name: Verify backend and migrations
+        working-directory: backend
+        run: mvn --batch-mode verify
+
+  build-and-push:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/digitalinvitation
+          tags: |
+            type=ref,event=tag
+            type=raw,value=${{ inputs.image_tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value=template-latest,enable=${{ github.ref == 'refs/heads/template-releases' }}
+            type=sha,format=long
+      - name: Build and publish immutable application image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Blue-green deployment
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/template-releases' && vars.DI_DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, digitalinvitation]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Deploy verified image with blue-green switch
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          DI_ENV_FILE: ${{ vars.DI_ENV_FILE_PATH }}
+          DI_COMPOSE_PROJECT: ${{ vars.DI_COMPOSE_PROJECT }}
+        run: bash scripts/deploy-blue-green.sh "$IMAGE_TAG"

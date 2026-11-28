@@ -11,11 +11,16 @@ import org.springframework.http.HttpStatus;
 
 @Service
 public class PublicSubmissionRateLimitService {
-    private static final int MAX_SUBMISSIONS_PER_HOUR = 5;
     private final JdbcTemplate jdbc;
+    private final int maxSubmissionsPerHour;
 
-    public PublicSubmissionRateLimitService(JdbcTemplate jdbc) {
+    public PublicSubmissionRateLimitService(JdbcTemplate jdbc,
+            @org.springframework.beans.factory.annotation.Value("${app.security.public-rsvp.max-per-hour:5}") int maxSubmissionsPerHour) {
+        if (maxSubmissionsPerHour < 1) {
+            throw new IllegalArgumentException("Public RSVP rate limit must be positive");
+        }
         this.jdbc = jdbc;
+        this.maxSubmissionsPerHour = maxSubmissionsPerHour;
     }
 
     public void assertAllowed(UUID publicationId, String remoteAddress) {
@@ -27,7 +32,7 @@ public class PublicSubmissionRateLimitService {
                 "window_started_at=CASE WHEN public_submission_bucket.window_started_at < now()-interval '1 hour' THEN now() ELSE public_submission_bucket.window_started_at END, " +
                 "updated_at=now() RETURNING attempts",
                 Integer.class, key);
-        if (attempts != null && attempts > MAX_SUBMISSIONS_PER_HOUR) {
+        if (attempts != null && attempts > maxSubmissionsPerHour) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many RSVP submissions. Please try again later.");
         }

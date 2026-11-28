@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<preview>
+  <hero>
+    <headline>With joyful hearts</headline>
+    <hostNames>The Sharma Family</hostNames>
+  </hero>
+  <event>
+    <eventDate>2027-02-14</eventDate>
+    <eventTime>18:00</eventTime>
+    <venue>Garden Palace, Hisar</venue>
+  </event>
+  <functions>
+    <item>
+      <functionName>Mehndi</functionName>
+      <functionDate>2027-02-12</functionDate>
+      <functionTime>17:00</functionTime>
+      <functionVenue>Garden Lawn</functionVenue>
+    </item>
+    <item>
+      <functionName>Wedding Ceremony</functionName>
+      <functionDate>2027-02-14</functionDate>
+      <functionTime>18:00</functionTime>
+      <functionVenue>Garden Palace</functionVenue>
+    </item>
+  </functions>
+</preview>

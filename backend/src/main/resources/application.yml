@@ -14,6 +14,17 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   jackson:
     default-property-inclusion: non_null
     serialization:
@@ -40,3 +51,45 @@ app:
       secret: ${APP_JWT_SECRET:}
       access-token-minutes: ${APP_JWT_ACCESS_TOKEN_MINUTES:15}
       refresh-token-days: ${APP_JWT_REFRESH_TOKEN_DAYS:30}
+    refresh-cookie-secure: ${APP_REFRESH_COOKIE_SECURE:true}
+    login:
+      max-attempts: ${APP_LOGIN_MAX_ATTEMPTS:8}
+      window-minutes: ${APP_LOGIN_WINDOW_MINUTES:15}
+      block-minutes: ${APP_LOGIN_BLOCK_MINUTES:15}
+    public-rsvp:
+      max-per-hour: ${APP_PUBLIC_RSVP_MAX_PER_HOUR:5}
+
+  payment:
+    razorpay:
+      enabled: ${APP_RAZORPAY_ENABLED:false}
+      mode: ${APP_RAZORPAY_MODE:test}
+      key-id: ${APP_RAZORPAY_KEY_ID:}
+      key-secret: ${APP_RAZORPAY_KEY_SECRET:}
+      webhook-secret: ${APP_RAZORPAY_WEBHOOK_SECRET:}
+  storage:
+    fileserver:
+      enabled: ${APP_FILESERVER_ENABLED:false}
+      base-url: ${APP_FILESERVER_BASE_URL:}
+      master-key: ${APP_FILESERVER_MASTER_KEY:}
+      master-drive-id: ${APP_FILESERVER_MASTER_DRIVE_ID:}
+      master-drive-name: ${APP_FILESERVER_MASTER_DRIVE_NAME:DigitalInvitation}
+      upload-path: ${APP_FILESERVER_UPLOAD_PATH:/master-drive/{driveId}/files/upload}
+      status-path: ${APP_FILESERVER_STATUS_PATH:/master-drive/uploads/{uploadId}/status}
+      download-path: ${APP_FILESERVER_DOWNLOAD_PATH:/master-drive/files/{fileId}/download}
+      delete-path: ${APP_FILESERVER_DELETE_PATH:/master-drive/files/{fileId}}
+      upload-timeout-seconds: ${APP_FILESERVER_UPLOAD_TIMEOUT_SECONDS:300}
+      poll-interval-millis: ${APP_FILESERVER_POLL_INTERVAL_MILLIS:1000}
+  bootstrap:
+    admin:
+      email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+  invitation:
+    media:
+      customer-enabled: ${APP_INVITATION_MEDIA_CUSTOMER_ENABLED:false}
+    expiry:
+      cron: "0 */15 * * * *"
+
+  mail:
+    enabled: ${APP_MAIL_ENABLED:false}
+    from: ${APP_MAIL_FROM:no-reply@example.invalid}
+    outbox-delay-ms: ${APP_MAIL_OUTBOX_DELAY_MS:15000}

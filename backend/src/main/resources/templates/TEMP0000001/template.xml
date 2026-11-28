@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template id="TEMP0000001" name="Floral Garden" version="1.0.0" schemaVersion="1">
+  <sections>
+    <section key="hero" label="Invitation">
+      <field key="headline" label="Invitation heading" type="text" required="true"/>
+      <field key="hostNames" label="Host names" type="text" required="true"/>
+    </section>
+    <section key="event" label="Event details">
+      <field key="eventDate" label="Date" type="date" required="true"/>
+      <field key="eventTime" label="Time" type="time" optional="true"/>
+      <field key="venue" label="Venue" type="location" required="true"/>
+    </section>
+    <section key="functions" label="Additional functions" optional="true" repeatable="true">
+      <field key="functionName" label="Function name" type="text" required="true"/>
+      <field key="functionDate" label="Function date" type="date" required="true"/>
+      <field key="functionTime" label="Function time" type="time" optional="true"/>
+      <field key="functionVenue" label="Function venue" type="location" optional="true"/>
+    </section>
+  </sections>
+</template>
