@@ -43,6 +43,9 @@ class DatabaseMigrationSmokeTest {
     private JdbcTemplate jdbc;
 
     @Autowired
+    private com.app.templatestudio.TemplatePackageResourceService templatePackageResources;
+
+    @Autowired
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Autowired
@@ -439,6 +442,20 @@ class DatabaseMigrationSmokeTest {
         assertTrue(count != null && count == 11,
                 "All core platform tables should exist after Flyway migration");
     }
+    @Test
+    void enchantedEnvelopePackageIsReadableFromTheApplicationClasspath() {
+        var preview = templatePackageResources.preview("templates/packages/TEMP0000002/1.0.0.zip");
+        @SuppressWarnings("unchecked")
+        var previewFiles = (java.util.Map<String, Object>) preview.get("previewFiles");
+        String html = String.valueOf(previewFiles.get("html"));
+        assertTrue(html.contains("data-di-behavior=\"wedding-envelope\""));
+        assertTrue(html.contains("data-location-qr"));
+        assertTrue(String.valueOf(previewFiles.get("css")).isNotBlank());
+        @SuppressWarnings("unchecked")
+        var sample = (java.util.Map<String, Object>) preview.get("sampleContent");
+        assertTrue(sample.containsKey("sections"));
+    }
+
     @Test
     void launchCataloguePublishesTwoWeddingTemplatesAndArchivesDemoDesigns() {
         Integer templateCount = jdbc.queryForObject(
