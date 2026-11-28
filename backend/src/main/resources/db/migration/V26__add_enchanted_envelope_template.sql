@@ -16,7 +16,7 @@ INSERT INTO invitation_template_version
     (template_id, version_number, definition, package_resource_path, package_sha256, package_version)
 SELECT id,
        1,
-       $definition{
+       '{
   "schemaVersion": "1",
   "templateId": "TEMP0000002",
   "name": "Enchanted Envelope",
@@ -201,7 +201,7 @@ SELECT id,
       "requiredFields": []
     }
   ]
-}$::jsonb,
+}'::jsonb,
        'templates/packages/TEMP0000002/1.0.0.zip',
        '47179db6d2389f3c874b08d91d6e25dc5e5228048bb9d4992b6b88cad762a94b',
        '1.0.0'
