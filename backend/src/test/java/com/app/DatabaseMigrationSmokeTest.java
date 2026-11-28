@@ -440,7 +440,7 @@ class DatabaseMigrationSmokeTest {
                 "All core platform tables should exist after Flyway migration");
     }
     @Test
-    void launchCataloguePublishesExactlyOneWeddingTemplateAndArchivesDemoDesigns() {
+    void launchCataloguePublishesTwoWeddingTemplatesAndArchivesDemoDesigns() {
         Integer templateCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template WHERE template_key IN " +
                 "('wedding-floral-garden','wedding-royal-heritage','wedding-minimal-modern'," +
@@ -454,8 +454,17 @@ class DatabaseMigrationSmokeTest {
                 "SELECT count(*) FROM invitation_template WHERE status='PUBLISHED'", Integer.class);
         Integer archivedCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template WHERE status='ARCHIVED'", Integer.class);
-        assertEquals(1, publishedCount, "Only the launch template should be customer-visible");
+        assertEquals(2, publishedCount, "The launch design and Enchanted Envelope should be customer-visible");
         assertEquals(17, archivedCount, "All old demo and legacy starter designs should be archived");
+
+        Integer enchantedCount = jdbc.queryForObject(
+                "SELECT count(*) FROM invitation_template t " +
+                "JOIN invitation_template_version v ON v.template_id=t.id AND v.version_number=t.current_version " +
+                "WHERE t.template_key='wedding-enchanted-envelope' AND t.status='PUBLISHED' " +
+                "AND v.package_resource_path='templates/packages/TEMP0000002/1.0.0.zip' " +
+                "AND v.definition->'design'->'palette'->>'accent'='#b99358'",
+                Integer.class);
+        assertEquals(1, enchantedCount, "Enchanted Envelope must be published with its classpath package and design metadata");
 
         Integer styledCount = jdbc.queryForObject(
                 "SELECT count(*) FROM invitation_template t " +
@@ -471,8 +480,8 @@ class DatabaseMigrationSmokeTest {
                 "JOIN invitation_template_version v ON v.template_id=t.id " +
                 "WHERE t.template_key='wedding-floral-garden' ORDER BY v.version_number LIMIT 1",
                 String.class);
-        assertTrue(styledCount != null && styledCount == 1,
-                "The sole launch template should contain a design palette for the public renderer. " +
+        assertTrue(styledCount != null && styledCount == 2,
+                "Both published wedding templates should contain design palettes for the public renderer. " +
                 "Matching rows=" + styledCount + "; sample definition=" + sampleDefinition);
     }
 
