@@ -26,6 +26,21 @@ BEGIN
            "name":"The Grand Invitation",
            "version":"2.0.0",
            "packageVersion":"2.0.0",
+           "layout":"envelope",
+           "locales":["en","hi"],
+           "customSectionsAllowed":false,
+           "design":{
+             "font":"serif",
+             "style":"envelope",
+             "ornament":"wax-seal",
+             "palette":{
+               "text":"#2f3d35",
+               "muted":"#6b7a71",
+               "accent":"#b99358",
+               "surface":"#fffdf9",
+               "background":"#fbf7f0"
+             }
+           },
            "sections":[
              {"key":"hero","label":"Couple details","enabled":true,"required":true,"optional":false,"repeatable":false,
               "fields":[
