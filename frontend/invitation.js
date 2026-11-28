@@ -4,12 +4,6 @@ const safe = value => String(value ?? "").replace(/[&<>"']/g, character => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 }[character]));
 
-window.addEventListener("message", event => {
-  const frame = $("invitation-render")?.querySelector("iframe");
-  if (!frame || event.source !== frame.contentWindow || event.data?.type !== "di-template-resize") return;
-  frame.style.height = Math.max(520, Math.min(5000, Number(event.data.height) || 760)) + "px";
-});
-
 const translations = {
   en: {
     eyebrow: "YOU ARE WARMLY INVITED", rsvpTitle: "Will you be joining us?",
@@ -53,15 +47,11 @@ async function load() {
     locale = content.locale === "hi" ? "hi" : "en";
     document.documentElement.lang = locale;
     if (snapshot.templatePackagePreview) {
-      const frame = document.createElement("iframe");
-      frame.title = snapshot.title || "Invitation";
-      frame.setAttribute("sandbox", "allow-scripts");
-      frame.style.width = "100%";
-      frame.style.minHeight = "100vh";
-      frame.style.border = "0";
-      frame.style.display = "block";
-      $("invitation-render").replaceChildren(frame);
-      window.TemplatePackageRenderer.renderIntoFrame(frame, snapshot.templatePackagePreview, snapshot);
+      window.TemplatePackageRenderer.renderIntoPage(
+        $("invitation-render"),
+        snapshot.templatePackagePreview,
+        snapshot
+      );
     } else {
       window.InvitationRenderer.render($("invitation-render"), snapshot);
     }
