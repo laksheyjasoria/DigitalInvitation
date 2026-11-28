@@ -21,3 +21,69 @@ body.invitation-page #loading,body.invitation-page #expired,body.invitation-page
 /* Template package is rendered directly in this document, without an iframe. */
 body.invitation-page #invitation-render{display:block;min-height:100vh;width:100%;}
 body.invitation-page #invitation-render>*{max-width:100%;}
+
+
+/* Flatten the invitation artwork itself: it must be the page, not a card inside the page. */
+body.invitation-page,
+html:has(body.invitation-page) {
+  width:100%;
+  min-height:100%;
+  margin:0;
+}
+body.invitation-page>.shell,
+body.invitation-page #invitation.panel,
+body.invitation-page #invitation-render {
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  background:transparent;
+}
+body.invitation-page #invitation-render>.di-invitation {
+  display:block;
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  outline:0;
+  box-shadow:none;
+  background:var(--di-bg,transparent);
+  overflow:visible;
+}
+body.invitation-page #invitation-render>.di-invitation>.di-frame {
+  width:100%;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+body.invitation-page #invitation-render>.di-invitation>.di-frame>.di-content {
+  width:100%;
+  min-height:100vh;
+  margin:0;
+  padding:clamp(18px,4vw,42px);
+  border:0;
+  border-radius:0!important;
+  box-shadow:none;
+  background:transparent;
+  overflow:visible;
+}
+body.invitation-page #invitation-render>.di-invitation .di-hero,
+body.invitation-page #invitation-render>.di-invitation .di-section {
+  max-width:min(100%,1100px);
+}
+@media(max-width:640px) {
+  body.invitation-page #invitation-render>.di-invitation>.di-frame>.di-content {
+    padding:14px;
+  }
+}
