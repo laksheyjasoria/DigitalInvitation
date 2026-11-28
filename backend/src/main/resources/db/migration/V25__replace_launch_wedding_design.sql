@@ -48,7 +48,7 @@ BEGIN
            ]
          }'::jsonb,
          'templates/packages/TEMP0000001/2.0.0.zip',
-         '19adb1978ab2f928d98f38a844e5ac01fc15d88b0b181da02292a8717997c401',
+         NULL,
          '2.0.0');
 
     UPDATE invitation_template
