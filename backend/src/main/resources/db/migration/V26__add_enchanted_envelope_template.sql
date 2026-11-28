@@ -201,7 +201,7 @@ SELECT id,
       "requiredFields": []
     }
   ]
-}$definition$::jsonb,
+}$::jsonb,
        'templates/packages/TEMP0000002/1.0.0.zip',
        '47179db6d2389f3c874b08d91d6e25dc5e5228048bb9d4992b6b88cad762a94b',
        '1.0.0'
