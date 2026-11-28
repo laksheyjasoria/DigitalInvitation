@@ -8,7 +8,6 @@ body.invitation-page #invitation-render{width:100%;min-height:100vh;margin:0;pad
 body.invitation-page #invitation-render>.di-invitation{width:100%;min-height:100vh;margin:0;padding:clamp(12px,2.5vw,32px);border-radius:0;box-shadow:none}
 body.invitation-page #invitation-render>.di-invitation .di-frame,
 body.invitation-page #invitation-render>.di-invitation .di-content{min-height:calc(100vh - 2 * clamp(12px,2.5vw,32px))}
-body.invitation-page #invitation-render>iframe{display:block;width:100%;min-height:100vh;height:100vh;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:transparent}
 body.invitation-page #rsvp-area{width:min(760px,calc(100% - 32px));margin:24px auto 56px}
 body.invitation-page #rsvp-area .section-card{background:var(--invitation-surface,#fffdf8);border:1px solid color-mix(in srgb,var(--invitation-accent,#747a58) 35%,transparent);padding:clamp(18px,4vw,32px)}
 body.invitation-page #loading,body.invitation-page #expired,body.invitation-page #not-found{width:min(560px,calc(100% - 32px));margin:12vh auto;padding:32px;border:1px solid var(--line);background:var(--white)}
@@ -18,3 +17,7 @@ body.invitation-page #loading,body.invitation-page #expired,body.invitation-page
  body.invitation-page #invitation-render>.di-invitation .di-content{min-height:calc(100vh - 20px)}
  body.invitation-page #rsvp-area{width:calc(100% - 20px);margin:18px auto 36px}
 }
+
+/* Template package is rendered directly in this document, without an iframe. */
+body.invitation-page #invitation-render{display:block;min-height:100vh;width:100%;}
+body.invitation-page #invitation-render>*{max-width:100%;}
