@@ -171,7 +171,7 @@
     let opened = false;
 
     function startReveals() {
-      const items = container.querySelectorAll(".reveal");
+      const items = container.querySelectorAll(".reveal, .draw-group");
       if (!("IntersectionObserver" in window)) { items.forEach(item => item.classList.add("in")); return; }
       const observer = new IntersectionObserver(entries => entries.forEach(entry => {
         if (entry.isIntersecting) { entry.target.classList.add("in"); observer.unobserve(entry.target); }
@@ -188,15 +188,44 @@
       const target = new Date(date + "T" + (/^\\d{1,2}:\\d{2}$/.test(time) ? time : "00:00") + ":00");
       const nodes = { days: container.querySelector("#cd-days"), hours: container.querySelector("#cd-hours"),
         mins: container.querySelector("#cd-mins"), secs: container.querySelector("#cd-secs") };
+      const rings = { days: container.querySelector("#ring-days"), hours: container.querySelector("#ring-hours"),
+        mins: container.querySelector("#ring-mins"), secs: container.querySelector("#ring-secs") };
+      const circumference = 2 * Math.PI * 34;
+      Object.values(rings).forEach(ring => {
+        if (ring) { ring.style.strokeDasharray = String(circumference); ring.style.strokeDashoffset = String(circumference); }
+      });
       const pad = value => String(value).padStart(2, "0");
+      const setRing = (ring, fraction) => {
+        if (ring) ring.style.strokeDashoffset = String(circumference * (1 - Math.max(0, Math.min(1, fraction))));
+      };
       const update = () => {
         const diff = Math.max(0, target.getTime() - Date.now());
-        if (nodes.days) nodes.days.textContent = pad(Math.floor(diff / 86400000));
-        if (nodes.hours) nodes.hours.textContent = pad(Math.floor(diff / 3600000) % 24);
-        if (nodes.mins) nodes.mins.textContent = pad(Math.floor(diff / 60000) % 60);
-        if (nodes.secs) nodes.secs.textContent = pad(Math.floor(diff / 1000) % 60);
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor(diff / 3600000) % 24;
+        const mins = Math.floor(diff / 60000) % 60;
+        const secs = Math.floor(diff / 1000) % 60;
+        if (nodes.days) nodes.days.textContent = pad(days);
+        if (nodes.hours) nodes.hours.textContent = pad(hours);
+        if (nodes.mins) nodes.mins.textContent = pad(mins);
+        if (nodes.secs) nodes.secs.textContent = pad(secs);
+        setRing(rings.days, (days % 365) / 365);
+        setRing(rings.hours, hours / 24);
+        setRing(rings.mins, mins / 60);
+        setRing(rings.secs, secs / 60);
       };
       update(); window.setInterval(update, 1000);
+    }
+
+    function startScrollProgress() {
+      const bar = container.querySelector("#progressBar");
+      if (!bar) return;
+      const update = () => {
+        const maximum = document.documentElement.scrollHeight - window.innerHeight;
+        bar.style.width = (maximum > 0 ? Math.max(0, Math.min(100, window.scrollY / maximum * 100)) : 0) + "%";
+      };
+      window.addEventListener("scroll", update, { passive: true });
+      window.addEventListener("resize", update, { passive: true });
+      update();
     }
 
     function startPetals() {
@@ -252,6 +281,7 @@
       }
     });
     startCountdown();
+    startScrollProgress();
     if (!intro) { document.body.classList.add("ready"); startReveals(); }
   }
 
