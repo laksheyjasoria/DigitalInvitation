@@ -57,7 +57,7 @@ async function load() {
       frame.title = snapshot.title || "Invitation";
       frame.setAttribute("sandbox", "allow-scripts");
       frame.style.width = "100%";
-      frame.style.minHeight = "760px";
+      frame.style.minHeight = "100vh";
       frame.style.border = "0";
       frame.style.display = "block";
       $("invitation-render").replaceChildren(frame);
