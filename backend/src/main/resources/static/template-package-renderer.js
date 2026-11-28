@@ -148,11 +148,70 @@
     return "<!doctype html>" + doc.documentElement.outerHTML;
   }
 
-  function renderIntoFrame(frame, preview, snapshot) {
+
+  // Public invitations are mounted into the page itself. Template JavaScript is
+  // intentionally not executed in the application origin; CSS animations and
+  // the published HTML/CSS remain fully rendered without an embedded frame.
+  function renderIntoPage(container, preview, snapshot) {
+    if (!container) throw new Error("Invitation render target is missing.");
+    if (!preview || typeof preview.html !== "string") {
+      throw new Error("The published template package is unavailable.");
+    }
+
+    const parser = new DOMParser();
+    const source = parser.parseFromString(preview.html, "text/html");
+    source.querySelectorAll("base,iframe,object,embed,script,meta[http-equiv]").forEach(node => node.remove());
+    bindTemplateData(source, snapshot);
+
+    source.querySelectorAll('link[rel~="stylesheet"]').forEach(node => {
+      const href = node.getAttribute("href") || "";
+      if (!href.startsWith("data:text/css")) node.remove();
+    });
+
+    const rewritten = replaceAssetReferences(source.documentElement.outerHTML, preview.assets);
+    const doc = parser.parseFromString(rewritten, "text/html");
+
+    // Prevent uploaded markup from running script or navigating through
+    // javascript: URLs when it is mounted in the first-party page.
+    doc.querySelectorAll("*").forEach(node => {
+      Array.from(node.attributes).forEach(attribute => {
+        const name = attribute.name.toLowerCase();
+        const value = String(attribute.value || "").trim();
+        if (name.startsWith("on") || name === "srcdoc") {
+          node.removeAttribute(attribute.name);
+          return;
+        }
+        if (["href", "src", "xlink:href", "action", "formaction", "poster"].includes(name) &&
+            /^(?:javascript|vbscript):|^data:text\/html/i.test(value)) {
+          node.removeAttribute(attribute.name);
+        }
+      });
+    });
+
+    document.querySelector("#di-template-package-style")?.remove();
+    const style = document.createElement("style");
+    style.id = "di-template-package-style";
+    style.textContent = replaceAssetReferences(preview.css || "", preview.assets);
+    document.head.append(style);
+
+    doc.head.querySelectorAll("style").forEach(templateStyle => {
+      const styleCopy = document.createElement("style");
+      styleCopy.textContent = templateStyle.textContent || "";
+      document.head.append(styleCopy);
+    });
+
+    container.innerHTML = doc.body.innerHTML;
+    if (doc.body.className) document.body.classList.add(...doc.body.className.split(/\s+/).filter(Boolean));
+    if (doc.body.getAttribute("style")) {
+      document.body.style.cssText += ";" + doc.body.getAttribute("style");
+    }
+    if (snapshot?.title) document.title = snapshot.title;
+  }
+\n  function renderIntoFrame(frame, preview, snapshot) {
     if (!frame) throw new Error("Template preview frame is missing.");
     frame.setAttribute("sandbox", "allow-scripts");
     frame.srcdoc = buildSrcdoc(preview, snapshot);
   }
 
-  global.TemplatePackageRenderer = { buildSrcdoc, renderIntoFrame };
+  global.TemplatePackageRenderer = { buildSrcdoc, renderIntoFrame, renderIntoPage };
 })(window);
